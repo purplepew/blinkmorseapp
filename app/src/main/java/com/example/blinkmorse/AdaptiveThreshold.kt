@@ -23,6 +23,9 @@ class AdaptiveThreshold(
     var threshold: Float = 0f
         private set
 
+    var lastAdaptation: String = "N/A"
+        private set
+
     fun seedShortSample(duration: Float) {
         shortSamples.add(duration)
         if (shortSamples.size > windowSize) {
@@ -53,11 +56,13 @@ class AdaptiveThreshold(
 
         if (duration < lowerBoundary) {
             seedShortSample(duration)
+            lastAdaptation = "Adapted Short"
         } else if (duration > upperBoundary) {
             seedLongSample(duration)
+            lastAdaptation = "Adapted Long"
+        } else {
+            lastAdaptation = "Ignored (Margin)"
         }
-        // If duration falls inside [lowerBoundary, upperBoundary],
-        // we do NOT adapt either sample list to prevent error reinforcement.
 
         return symbol
     }

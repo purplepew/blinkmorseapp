@@ -2,6 +2,7 @@ package com.example.blinkmorse
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
 import android.media.AudioManager
@@ -9,10 +10,14 @@ import android.media.ToneGenerator
 import android.os.Bundle
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.view.Gravity
 import android.view.LayoutInflater
+import android.widget.CheckBox
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -38,6 +43,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +66,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.blinkmorse.ui.theme.BlinkMorseTheme
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -66,6 +74,7 @@ import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
@@ -166,6 +175,141 @@ fun showCheatSheetBottomSheet(context: Context) {
     bottomSheetDialog.show()
 }
 
+fun showDataManagerBottomSheet(context: Context) {
+    val bottomSheetDialog = BottomSheetDialog(context)
+    val view = LayoutInflater.from(context).inflate(R.layout.layout_data_manager, null)
+    bottomSheetDialog.setContentView(view)
+
+    // Ensure camera background is visible
+    bottomSheetDialog.window?.setDimAmount(0f)
+
+    val cbSelectAll = view.findViewById<CheckBox>(R.id.cbSelectAll)
+    val btnShareSelected = view.findViewById<android.widget.Button>(R.id.btnShareSelected)
+    val btnDeleteSelected = view.findViewById<android.widget.Button>(R.id.btnDeleteSelected)
+    val llFileList = view.findViewById<LinearLayout>(R.id.llFileList)
+    val btnClose = view.findViewById<ImageButton>(R.id.btnCloseManager)
+
+    btnClose.setOnClickListener { bottomSheetDialog.dismiss() }
+
+    fun loadFiles() {
+        llFileList.removeAllViews()
+        val files = context.filesDir.listFiles { _, name -> name.endsWith(".csv") }
+            ?.sortedBy { it.name } ?: emptyList()
+
+        val checkBoxes = mutableListOf<CheckBox>()
+        val fileMap = mutableMapOf<CheckBox, File>()
+
+        for (file in files) {
+            val row = LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(0, 24, 0, 24) // Added vertical padding for table spacing
+            }
+
+            val cb = CheckBox(context).apply {
+                buttonTintList = android.content.res.ColorStateList.valueOf(AndroidColor.WHITE)
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
+                    marginEnd = 16
+                }
+            }
+            
+            // Add custom document icon next to checkbox
+            val iconView = android.widget.ImageView(context).apply {
+                setImageResource(R.drawable.ic_test_data)
+                layoutParams = LinearLayout.LayoutParams(64, 64).apply {
+                    marginEnd = 32
+                }
+                setColorFilter(AndroidColor.WHITE)
+            }
+
+            // File Name Text
+            val tvFileName = TextView(context).apply {
+                text = file.name
+                setTextColor(AndroidColor.WHITE)
+                textSize = 16f
+                setTypeface(null, android.graphics.Typeface.BOLD)
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+
+            checkBoxes.add(cb)
+            fileMap[cb] = file
+
+            val btnShare = ImageButton(context).apply {
+                setImageResource(android.R.drawable.ic_menu_share)
+                setBackgroundColor(AndroidColor.TRANSPARENT)
+                setColorFilter(AndroidColor.WHITE)
+                setPadding(16, 16, 16, 16)
+                setOnClickListener {
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/csv"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Share Data"))
+                }
+            }
+
+            row.addView(cb)
+            row.addView(iconView)
+            row.addView(tvFileName)
+            row.addView(btnShare)
+            llFileList.addView(row)
+        }
+
+        cbSelectAll.setOnCheckedChangeListener { _, isChecked ->
+            checkBoxes.forEach { it.isChecked = isChecked }
+        }
+
+        btnShareSelected.setOnClickListener {
+            val selectedFiles = checkBoxes.filter { it.isChecked }.mapNotNull { fileMap[it] }
+            if (selectedFiles.isNotEmpty()) {
+                val uris = selectedFiles.map {
+                    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", it)
+                }
+                val intent = Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                    type = "text/csv"
+                    putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(uris))
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(intent, "Share Selected Data"))
+            } else {
+                Toast.makeText(context, "No files selected", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        btnDeleteSelected.setOnClickListener {
+            val selectedFiles = checkBoxes.filter { it.isChecked }.mapNotNull { fileMap[it] }
+            if (selectedFiles.isNotEmpty()) {
+                selectedFiles.forEach { it.delete() }
+                cbSelectAll.isChecked = false
+                loadFiles() // Refresh list
+                Toast.makeText(context, "Deleted ${selectedFiles.size} files", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    loadFiles()
+
+    bottomSheetDialog.setOnShowListener { dialog ->
+        val d = dialog as BottomSheetDialog
+        val bottomSheet = d.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let {
+            val behavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(it)
+            val displayMetrics = context.resources.displayMetrics
+            val screenHeight = displayMetrics.heightPixels
+            behavior.maxHeight = (screenHeight * 0.60).toInt()
+            behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        }
+    }
+
+    bottomSheetDialog.show()
+}
+
 @Composable
 fun CameraScreen() {
     val context = LocalContext.current
@@ -220,6 +364,7 @@ fun BlinkMorseUI() {
     var decodedText by remember { mutableStateOf("") }
     var thresholdInfo by remember { mutableStateOf("Threshold: --- | Short: --- | Long: ---") }
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
+    var isTest1Active by remember { mutableStateOf(false) }
     
     // UI Animation State
     var isFlashing by remember { mutableStateOf(false) }
@@ -227,6 +372,7 @@ fun BlinkMorseUI() {
     val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
     val blinkDetector = remember { BlinkDetector() }
     val adaptiveThreshold = remember { AdaptiveThreshold() }
+    val sessionLogger = remember { SessionLogger() }
     
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
 
@@ -246,6 +392,12 @@ fun BlinkMorseUI() {
         }
     }
     
+    // Helper to transition UI between CALIBRATING and READY phases
+    fun updateUIState(newState: AppState, message: String) {
+        appState = newState
+        promptMessage = message
+    }
+
     val morseDecoder = remember {
         MorseDecoder(
             coroutineScope = coroutineScope,
@@ -267,8 +419,22 @@ fun BlinkMorseUI() {
                 "?" -> { }
                 else -> {
                     decodedText += decodedChar
+                    
+                    // Auto-finish Test 1
+                    if (isTest1Active && decodedText == "CAVITE STATE UNIV") {
+                        coroutineScope.launch(Dispatchers.Main) {
+                            val fileName = sessionLogger.exportSession(context)
+                            if (fileName != null) {
+                                Toast.makeText(context, "Saved as $fileName", Toast.LENGTH_LONG).show()
+                            }
+                            isTest1Active = false
+                            updateUIState(AppState.READY_TYPING, "Typing Mode")
+                        }
+                    }
                 }
             }
+
+            sessionLogger.attachDecodedChar(decodedChar)
 
             coroutineScope.launch(Dispatchers.Default) {
                 when (decodedChar) {
@@ -279,12 +445,6 @@ fun BlinkMorseUI() {
                 }
             }
         }
-    }
-
-    // Helper to transition UI between CALIBRATING and READY phases
-    fun updateUIState(newState: AppState, message: String) {
-        appState = newState
-        promptMessage = message
     }
 
     val detector = remember {
@@ -309,6 +469,14 @@ fun BlinkMorseUI() {
                                     AppState.CALIBRATING_SHORT -> {
                                         adaptiveThreshold.seedShortSample(duration.toFloat())
                                         shortCalibCount++
+                                        sessionLogger.logBlink(
+                                            durationMs = duration,
+                                            shortCenter = adaptiveThreshold.shortCenter,
+                                            longCenter = adaptiveThreshold.longCenter,
+                                            threshold = adaptiveThreshold.threshold,
+                                            symbol = ".",
+                                            adaptation = "calibration_short"
+                                        )
                                         coroutineScope.launch(Dispatchers.Default) {
                                             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
                                         }
@@ -328,6 +496,14 @@ fun BlinkMorseUI() {
                                     AppState.CALIBRATING_LONG -> {
                                         adaptiveThreshold.seedLongSample(duration.toFloat())
                                         longCalibCount++
+                                        sessionLogger.logBlink(
+                                            durationMs = duration,
+                                            shortCenter = adaptiveThreshold.shortCenter,
+                                            longCenter = adaptiveThreshold.longCenter,
+                                            threshold = adaptiveThreshold.threshold,
+                                            symbol = "-",
+                                            adaptation = "calibration_long"
+                                        )
                                         coroutineScope.launch(Dispatchers.Default) {
                                             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
                                         }
@@ -341,7 +517,8 @@ fun BlinkMorseUI() {
                                         }
                                         
                                         if (longCalibCount >= 5) {
-                                            updateUIState(AppState.READY_TYPING, "Typing Mode")
+                                            val prompt = if (isTest1Active) "TEST 1: Spell 'CAVITE STATE UNIV'" else "Typing Mode"
+                                            updateUIState(AppState.READY_TYPING, prompt)
                                             coroutineScope.launch(Dispatchers.Default) {
                                                 toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
                                             }
@@ -364,6 +541,15 @@ fun BlinkMorseUI() {
                                             delay(150)
                                             isFlashing = false
                                         }
+
+                                        sessionLogger.logBlink(
+                                            durationMs = duration,
+                                            shortCenter = adaptiveThreshold.shortCenter,
+                                            longCenter = adaptiveThreshold.longCenter,
+                                            threshold = adaptiveThreshold.threshold,
+                                            symbol = symbol,
+                                            adaptation = adaptiveThreshold.lastAdaptation
+                                        )
 
                                         thresholdInfo = String.format(
                                             Locale.US,
@@ -534,6 +720,38 @@ fun BlinkMorseUI() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Test 1 Data Controls Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = {
+                        isTest1Active = true
+                        sessionLogger.startNewSession()
+                        decodedText = ""
+                        adaptiveThreshold.reset()
+                        shortCalibCount = 0
+                        longCalibCount = 0
+                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [0/5]")
+                        morseDecoder.clear()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)) // Blue
+                ) { Text("Start Test 1", color = Color.White) }
+
+                IconButton(
+                    onClick = { showDataManagerBottomSheet(context) }
+                ) {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_test_data),
+                        contentDescription = "Data Manager",
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             // Caretaker Controls Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -560,6 +778,7 @@ fun BlinkMorseUI() {
                 
                 Button(
                     onClick = {
+                        isTest1Active = false
                         adaptiveThreshold.reset()
                         shortCalibCount = 0
                         longCalibCount = 0
