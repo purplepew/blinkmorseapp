@@ -1,0 +1,587 @@
+package com.example.blinkmorse
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.Color as AndroidColor
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Bundle
+import android.speech.tts.TextToSpeech
+import android.util.Log
+import android.view.LayoutInflater
+import android.widget.GridLayout
+import android.widget.ImageButton
+import android.widget.TextView
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.blinkmorse.ui.theme.BlinkMorseTheme
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.util.Locale
+import java.util.concurrent.Executors
+
+enum class AppState {
+    CALIBRATING_SHORT,
+    CALIBRATING_LONG,
+    READY_TYPING
+}
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            BlinkMorseTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = Color.Black // Enforce Dark Theme
+                ) {
+                    CameraScreen()
+                }
+            }
+        }
+    }
+}
+
+// Extension function to show the BottomSheetDialog with the XML layout
+fun showCheatSheetBottomSheet(context: Context) {
+    val bottomSheetDialog = BottomSheetDialog(context)
+    val view = LayoutInflater.from(context).inflate(R.layout.layout_cheat_sheet, null)
+
+    // Remove background dimming so the live buffer and camera remain visible behind it
+    bottomSheetDialog.window?.setDimAmount(0f)
+
+    // Setup Close Button
+    view.findViewById<ImageButton>(R.id.btnClose).setOnClickListener {
+        bottomSheetDialog.dismiss()
+    }
+
+    // Populate Alphabet Grid (4 columns)
+    val gridAlphabet = view.findViewById<GridLayout>(R.id.gridAlphabet)
+    val alphabetMap = mapOf(
+        "A" to ".-", "B" to "-...", "C" to "-.-.", "D" to "-..", "E" to ".",
+        "F" to "..-.", "G" to "--.", "H" to "....", "I" to "..", "J" to ".---",
+        "K" to "-.-", "L" to ".-..", "M" to "--", "N" to "-.", "O" to "---",
+        "P" to ".--.", "Q" to "--.-", "R" to ".-.", "S" to "...", "T" to "-",
+        "U" to "..-", "V" to "...-", "W" to ".--", "X" to "-..-", "Y" to "-.--", "Z" to "--.."
+    )
+    alphabetMap.forEach { (letter, code) ->
+        val tv = TextView(context).apply {
+            text = String.format(Locale.US, "%s: %s", letter, code)
+            setTextColor(AndroidColor.WHITE)
+            textSize = 14f // Condensed text size
+            setPadding(0, 4, 8, 4) // Condensed padding
+        }
+        val params = GridLayout.LayoutParams(
+            GridLayout.spec(GridLayout.UNDEFINED, 1f),
+            GridLayout.spec(GridLayout.UNDEFINED, 1f)
+        )
+        gridAlphabet.addView(tv, params)
+    }
+
+    // Populate Numbers Grid (5 columns)
+    val gridNumbers = view.findViewById<GridLayout>(R.id.gridNumbers)
+    val numbersMap = mapOf(
+        "1" to ".----", "2" to "..---", "3" to "...--", "4" to "....-", "5" to ".....",
+        "6" to "-....", "7" to "--...", "8" to "---..", "9" to "----.", "0" to "-----"
+    )
+    numbersMap.forEach { (number, code) ->
+        val tv = TextView(context).apply {
+            text = String.format(Locale.US, "%s: %s", number, code)
+            setTextColor(AndroidColor.WHITE)
+            textSize = 14f // Condensed text size
+            setPadding(0, 4, 8, 4) // Condensed padding
+        }
+        val params = GridLayout.LayoutParams(
+            GridLayout.spec(GridLayout.UNDEFINED, 1f),
+            GridLayout.spec(GridLayout.UNDEFINED, 1f)
+        )
+        gridNumbers.addView(tv, params)
+    }
+
+    bottomSheetDialog.setContentView(view)
+
+    // Limit Height to max 45% of screen
+    bottomSheetDialog.setOnShowListener { dialog ->
+        val d = dialog as BottomSheetDialog
+        val bottomSheet = d.findViewById<android.view.View>(com.google.android.material.R.id.design_bottom_sheet)
+        bottomSheet?.let {
+            val behavior = com.google.android.material.bottomsheet.BottomSheetBehavior.from(it)
+            val displayMetrics = context.resources.displayMetrics
+            val screenHeight = displayMetrics.heightPixels
+            behavior.maxHeight = (screenHeight * 0.45).toInt()
+            behavior.state = com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED
+        }
+    }
+
+    bottomSheetDialog.show()
+}
+
+@Composable
+fun CameraScreen() {
+    val context = LocalContext.current
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasCameraPermission = isGranted
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    if (hasCameraPermission) {
+        BlinkMorseUI()
+    } else {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
+                Text("Request Camera Permission", color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+fun BlinkMorseUI() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
+
+    var appState by remember { mutableStateOf(AppState.CALIBRATING_SHORT) }
+    var promptMessage by remember { mutableStateOf("Perform 5 short blinks (dots) [0/5]") }
+
+    var shortCalibCount by remember { mutableIntStateOf(0) }
+    var longCalibCount by remember { mutableIntStateOf(0) }
+
+    var currentSymbols by remember { mutableStateOf("") }
+    var decodedText by remember { mutableStateOf("") }
+    var thresholdInfo by remember { mutableStateOf("Threshold: --- | Short: --- | Long: ---") }
+    var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
+    
+    // UI Animation State
+    var isFlashing by remember { mutableStateOf(false) }
+
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val blinkDetector = remember { BlinkDetector() }
+    val adaptiveThreshold = remember { AdaptiveThreshold() }
+    
+    val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
+
+    var tts by remember { mutableStateOf<TextToSpeech?>(null) }
+    DisposableEffect(context) {
+        var textToSpeech: TextToSpeech? = null
+        textToSpeech = TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech?.language = Locale.US
+            }
+        }
+        tts = textToSpeech
+
+        onDispose {
+            tts?.stop()
+            tts?.shutdown()
+        }
+    }
+    
+    val morseDecoder = remember {
+        MorseDecoder(
+            coroutineScope = coroutineScope,
+            onSymbolUpdated = { currentSymbols = it }
+        ) { decodedChar ->
+            when (decodedChar) {
+                "<BS>" -> {
+                    if (decodedText.isNotEmpty()) {
+                        decodedText = decodedText.dropLast(1)
+                        Log.d("BlinkMorse", "BACKSPACE executed. Text is now: '$decodedText'")
+                    }
+                }
+                "<SPEAK>" -> {
+                    if (decodedText.isNotEmpty()) {
+                        tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                        decodedText = ""
+                    }
+                }
+                "?" -> { }
+                else -> {
+                    decodedText += decodedChar
+                }
+            }
+
+            coroutineScope.launch(Dispatchers.Default) {
+                when (decodedChar) {
+                    "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
+                    "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
+                    "?" -> toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 150)
+                    else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                }
+            }
+        }
+    }
+
+    // Helper to transition UI between CALIBRATING and READY phases
+    fun updateUIState(newState: AppState, message: String) {
+        appState = newState
+        promptMessage = message
+    }
+
+    val detector = remember {
+        FaceLandmarkDetector(
+            context = context,
+            listener = object : FaceLandmarkDetector.Listener {
+                override fun onResults(
+                    result: FaceLandmarkerResult,
+                    isFaceDetected: Boolean,
+                    ear: Float?
+                ) {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        faceDetectedState = isFaceDetected
+
+                        if (isFaceDetected && ear != null) {
+                            val blinkResult = blinkDetector.update(ear)
+
+                            if (blinkResult.blinkEnded && blinkResult.durationMs != null) {
+                                val duration = blinkResult.durationMs
+
+                                when (appState) {
+                                    AppState.CALIBRATING_SHORT -> {
+                                        adaptiveThreshold.seedShortSample(duration.toFloat())
+                                        shortCalibCount++
+                                        coroutineScope.launch(Dispatchers.Default) {
+                                            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
+                                        }
+                                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [$shortCalibCount/5]")
+                                        
+                                        // Trigger Visual Flash
+                                        isFlashing = true
+                                        coroutineScope.launch {
+                                            delay(150)
+                                            isFlashing = false
+                                        }
+                                        
+                                        if (shortCalibCount >= 5) {
+                                            updateUIState(AppState.CALIBRATING_LONG, "Now perform 5 long blinks (dashes) [0/5]")
+                                        }
+                                    }
+                                    AppState.CALIBRATING_LONG -> {
+                                        adaptiveThreshold.seedLongSample(duration.toFloat())
+                                        longCalibCount++
+                                        coroutineScope.launch(Dispatchers.Default) {
+                                            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+                                        }
+                                        updateUIState(AppState.CALIBRATING_LONG, "Now perform 5 long blinks (dashes) [$longCalibCount/5]")
+                                        
+                                        // Trigger Visual Flash
+                                        isFlashing = true
+                                        coroutineScope.launch {
+                                            delay(150)
+                                            isFlashing = false
+                                        }
+                                        
+                                        if (longCalibCount >= 5) {
+                                            updateUIState(AppState.READY_TYPING, "Typing Mode")
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
+                                            }
+                                        }
+                                    }
+                                    AppState.READY_TYPING -> {
+                                        val symbol = adaptiveThreshold.classifyAndAdapt(duration)
+
+                                        coroutineScope.launch(Dispatchers.Default) {
+                                            if (symbol == ".") {
+                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
+                                            } else if (symbol == "-") {
+                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+                                            }
+                                        }
+                                        
+                                        // Trigger Visual Flash
+                                        isFlashing = true
+                                        coroutineScope.launch {
+                                            delay(150)
+                                            isFlashing = false
+                                        }
+
+                                        thresholdInfo = String.format(
+                                            Locale.US,
+                                            "Threshold: %.0f ms | Short: %.0f ms | Long: %.0f ms",
+                                            adaptiveThreshold.threshold,
+                                            adaptiveThreshold.shortCenter,
+                                            adaptiveThreshold.longCenter
+                                        )
+
+                                        morseDecoder.addSymbol(symbol)
+                                    }
+                                }
+                            }
+                        } else {
+                            blinkDetector.reset()
+                        }
+                    }
+                }
+
+                override fun onError(error: String) {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        Log.e("BlinkMorse", "Detector error: $error")
+                    }
+                }
+            }
+        )
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        onDispose {
+            detector.clear()
+            cameraExecutor.shutdown()
+            morseDecoder.clear()
+            toneGenerator.release()
+        }
+    }
+
+    Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        // --- TOP 30%: Camera Container & Tracking Badge ---
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.3f)
+        ) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize(),
+                factory = { ctx ->
+                    PreviewView(ctx).apply {
+                        scaleType = PreviewView.ScaleType.FILL_CENTER
+                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                        cameraProviderFuture.addListener({
+                            val cameraProvider = cameraProviderFuture.get()
+
+                            val preview = Preview.Builder().build().also {
+                                it.surfaceProvider = surfaceProvider
+                            }
+
+                            val imageAnalysis = ImageAnalysis.Builder()
+                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build()
+
+                            imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                                detector.detectLiveStream(imageProxy)
+                            }
+
+                            val cameraSelector = CameraSelector.Builder()
+                                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                                .build()
+
+                            try {
+                                cameraProvider.unbindAll()
+                                cameraProvider.bindToLifecycle(
+                                    lifecycleOwner,
+                                    cameraSelector,
+                                    preview,
+                                    imageAnalysis
+                                )
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }, ContextCompat.getMainExecutor(ctx))
+                    }
+                }
+            )
+
+            // Tracking Badge Overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 48.dp)
+                    .background(
+                        color = when {
+                            faceDetectedState == true -> Color(0xCC2E7D32) // Green
+                            faceDetectedState == false -> Color(0xCCD32F2F) // Red
+                            else -> Color(0xCC333333) // Gray
+                        },
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = if (faceDetectedState == true) "Face Detected" else "No Face",
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        // --- BOTTOM 70%: UI Layout ---
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(0.7f)
+                .padding(16.dp)
+        ) {
+            // Prompt/State Text
+            Text(
+                text = promptMessage,
+                color = Color.White,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Animated Live Buffer Background Color
+            val bufferBackgroundColor by animateColorAsState(
+                targetValue = if (isFlashing) Color.DarkGray else Color(0xCC000000),
+                animationSpec = tween(durationMillis = 150),
+                label = "FlashAnimation"
+            )
+
+            // Live Buffer
+            Text(
+                text = currentSymbols.ifEmpty { " " }, // Prevents UI jitter
+                color = Color.Green,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.ExtraBold,
+                textAlign = TextAlign.Center,
+                letterSpacing = 4.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(bufferBackgroundColor, RoundedCornerShape(8.dp))
+                    .padding(8.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Message Output
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = decodedText,
+                    color = Color.Cyan,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Caretaker Controls Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Button(
+                    onClick = { showCheatSheetBottomSheet(context) },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                ) { Text("?", color = Color.White) }
+                
+                Button(
+                    onClick = { decodedText = "" },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                ) { Text("Clear", color = Color.White) }
+                
+                Button(
+                    onClick = {
+                        if (decodedText.isNotEmpty()) {
+                            tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
+                ) { Text("Speak", color = Color.White) }
+                
+                Button(
+                    onClick = {
+                        adaptiveThreshold.reset()
+                        shortCalibCount = 0
+                        longCalibCount = 0
+                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [0/5]")
+                        decodedText = ""
+                        morseDecoder.clear()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                ) { Text("Recalibrate", color = Color.White) }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Debug/Thesis Stats
+            Text(
+                text = thresholdInfo,
+                color = Color.Gray,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
