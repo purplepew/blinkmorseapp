@@ -16,6 +16,9 @@ class AdaptiveThreshold(
     private val shortSamples = mutableListOf<Float>()
     private val longSamples = mutableListOf<Float>()
 
+    private val stagedShorts = mutableListOf<Float>()
+    private val stagedLongs = mutableListOf<Float>()
+
     var shortCenter: Float = 0f
         private set
     var longCenter: Float = 0f
@@ -55,16 +58,27 @@ class AdaptiveThreshold(
         val upperBoundary = threshold + margin
 
         if (duration < lowerBoundary) {
-            seedShortSample(duration)
-            lastAdaptation = "Adapted Short"
+            stagedShorts.add(duration)
+            lastAdaptation = "Staged Short"
         } else if (duration > upperBoundary) {
-            seedLongSample(duration)
-            lastAdaptation = "Adapted Long"
+            stagedLongs.add(duration)
+            lastAdaptation = "Staged Long"
         } else {
             lastAdaptation = "Ignored (Margin)"
         }
 
         return symbol
+    }
+
+    fun commitStagedBlinks() {
+        stagedShorts.forEach { seedShortSample(it) }
+        stagedLongs.forEach { seedLongSample(it) }
+        clearStagedBlinks()
+    }
+
+    fun clearStagedBlinks() {
+        stagedShorts.clear()
+        stagedLongs.clear()
     }
 
     private fun update() {
@@ -92,11 +106,20 @@ class AdaptiveThreshold(
         }
     }
 
+    fun hasValidCalibration(): Boolean {
+        if (shortSamples.isEmpty() || longSamples.isEmpty()) return false
+        val currentShortMedian = calculateMedian(shortSamples)
+        val currentLongMedian = calculateMedian(longSamples)
+        return (currentLongMedian - currentShortMedian) >= minimumSeparationMs
+    }
+
     fun reset() {
         shortSamples.clear()
         longSamples.clear()
+        clearStagedBlinks()
         shortCenter = 0f
         longCenter = 0f
         threshold = 0f
+        lastAdaptation = "N/A"
     }
 }

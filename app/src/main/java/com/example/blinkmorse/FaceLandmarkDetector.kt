@@ -66,6 +66,9 @@ class FaceLandmarkDetector(
         }
     }
 
+    private val matrix = Matrix()
+    private var lastRotationDegrees: Int = -1
+
     fun detectLiveStream(imageProxy: ImageProxy) {
         val landmarker = faceLandmarker
         if (landmarker == null) {
@@ -84,8 +87,10 @@ class FaceLandmarkDetector(
             val rotationDegrees = imageProxy.imageInfo.rotationDegrees
 
             val rotatedBitmap = if (rotationDegrees != 0) {
-                val matrix = Matrix().apply {
-                    postRotate(rotationDegrees.toFloat())
+                if (rotationDegrees != lastRotationDegrees) {
+                    matrix.reset()
+                    matrix.postRotate(rotationDegrees.toFloat())
+                    lastRotationDegrees = rotationDegrees
                 }
                 Bitmap.createBitmap(
                     bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true

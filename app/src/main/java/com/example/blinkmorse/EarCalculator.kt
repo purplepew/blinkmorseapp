@@ -17,16 +17,27 @@ object EarCalculator {
         val maxIndex = eyeIndices.maxOrNull() ?: return 0f
         if (faceLandmarks.size <= maxIndex) return 0f
 
-        val p1 = getPoint(faceLandmarks[eyeIndices[0]], imageWidth, imageHeight)
-        val p2 = getPoint(faceLandmarks[eyeIndices[1]], imageWidth, imageHeight)
-        val p3 = getPoint(faceLandmarks[eyeIndices[2]], imageWidth, imageHeight)
-        val p4 = getPoint(faceLandmarks[eyeIndices[3]], imageWidth, imageHeight)
-        val p5 = getPoint(faceLandmarks[eyeIndices[4]], imageWidth, imageHeight)
-        val p6 = getPoint(faceLandmarks[eyeIndices[5]], imageWidth, imageHeight)
+        val p1x = faceLandmarks[eyeIndices[0]].x() * imageWidth
+        val p1y = faceLandmarks[eyeIndices[0]].y() * imageHeight
+        
+        val p2x = faceLandmarks[eyeIndices[1]].x() * imageWidth
+        val p2y = faceLandmarks[eyeIndices[1]].y() * imageHeight
+        
+        val p3x = faceLandmarks[eyeIndices[2]].x() * imageWidth
+        val p3y = faceLandmarks[eyeIndices[2]].y() * imageHeight
+        
+        val p4x = faceLandmarks[eyeIndices[3]].x() * imageWidth
+        val p4y = faceLandmarks[eyeIndices[3]].y() * imageHeight
+        
+        val p5x = faceLandmarks[eyeIndices[4]].x() * imageWidth
+        val p5y = faceLandmarks[eyeIndices[4]].y() * imageHeight
+        
+        val p6x = faceLandmarks[eyeIndices[5]].x() * imageWidth
+        val p6y = faceLandmarks[eyeIndices[5]].y() * imageHeight
 
-        val vertical1 = hypot(p2.first - p6.first, p2.second - p6.second)
-        val vertical2 = hypot(p3.first - p5.first, p3.second - p5.second)
-        val horizontal = hypot(p1.first - p4.first, p1.second - p4.second)
+        val vertical1 = hypot(p2x - p6x, p2y - p6y)
+        val vertical2 = hypot(p3x - p5x, p3y - p5y)
+        val horizontal = hypot(p1x - p4x, p1y - p4y)
 
         if (horizontal == 0f) return 0f
 
@@ -43,11 +54,4 @@ object EarCalculator {
         return (leftEar + rightEar) / 2.0f
     }
 
-    private fun getPoint(
-        landmark: NormalizedLandmark,
-        width: Int,
-        height: Int
-    ): Pair<Float, Float> {
-        return Pair(landmark.x() * width, landmark.y() * height)
-    }
 }

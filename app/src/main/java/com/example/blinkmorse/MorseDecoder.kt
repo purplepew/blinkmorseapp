@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 class MorseDecoder(
     private val coroutineScope: CoroutineScope,
     private val onSymbolUpdated: (String) -> Unit,
+    private val onAbort: () -> Unit,
     private val onCharacterDecoded: (String) -> Unit
 ) {
     companion object {
@@ -33,11 +34,24 @@ class MorseDecoder(
 
     private var currentSymbols = ""
     private var timeoutJob: Job? = null
+    
+    var isStrictMode = false
 
-    fun addSymbol(symbol: String) {
+    fun addSymbol(symbol: String): Boolean {
         currentSymbols += symbol
+
+        // INSTANT ABORT CHECK (Disabled in Strict Evaluation Mode)
+        if (!isStrictMode && currentSymbols.length >= 6) {
+            timeoutJob?.cancel()
+            currentSymbols = ""
+            notifySymbolUpdated()
+            onAbort()
+            return false // Returns false to indicate the blink was rejected/aborted
+        }
+
         notifySymbolUpdated()
         resetTimeout()
+        return true // Returns true to indicate normal blink accepted
     }
 
     private fun resetTimeout() {
@@ -50,9 +64,17 @@ class MorseDecoder(
 
     private fun decodeCurrent() {
         if (currentSymbols.isNotEmpty()) {
-            val decodedChar = MORSE_MAP[currentSymbols] ?: "?"
-            Log.d("BlinkMorse", "Character Decoded: '$decodedChar' (from symbols: $currentSymbols)")
-            onCharacterDecoded(decodedChar)
+            // STRICT EXACT MATCH: No fallbacks, no guesses.
+            val decodedChar = MORSE_MAP[currentSymbols]
+            
+            if (decodedChar != null) {
+                Log.d("BlinkMorse", "Character Decoded: '$decodedChar' (from symbols: $currentSymbols)")
+                onCharacterDecoded(decodedChar)
+            } else {
+                Log.d("BlinkMorse", "Unrecognized sequence: '$currentSymbols'. Sending empty string.")
+                onCharacterDecoded("") // Empty string signifies invalid sequence
+            }
+            
             currentSymbols = ""
             notifySymbolUpdated()
         }

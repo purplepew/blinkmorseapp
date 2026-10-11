@@ -78,9 +78,12 @@ import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
+const val TEST_1_TARGET_LENGTH = 59
+
 enum class AppState {
     CALIBRATING_SHORT,
     CALIBRATING_LONG,
+    CALIBRATION_FAILED,
     READY_TYPING
 }
 
@@ -355,7 +358,7 @@ fun BlinkMorseUI() {
     val coroutineScope = rememberCoroutineScope()
 
     var appState by remember { mutableStateOf(AppState.CALIBRATING_SHORT) }
-    var promptMessage by remember { mutableStateOf("Perform 5 short blinks (dots) [0/5]") }
+    var promptMessage by remember { mutableStateOf("Perform 10 short blinks (dots) [0/10]") }
 
     var shortCalibCount by remember { mutableIntStateOf(0) }
     var longCalibCount by remember { mutableIntStateOf(0) }
@@ -365,6 +368,7 @@ fun BlinkMorseUI() {
     var thresholdInfo by remember { mutableStateOf("Threshold: --- | Short: --- | Long: ---") }
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
+    var currentFps by remember { mutableIntStateOf(0) }
     
     // UI Animation State
     var isFlashing by remember { mutableStateOf(false) }
@@ -401,47 +405,85 @@ fun BlinkMorseUI() {
     val morseDecoder = remember {
         MorseDecoder(
             coroutineScope = coroutineScope,
-            onSymbolUpdated = { currentSymbols = it }
+            onSymbolUpdated = { currentSymbols = it },
+            onAbort = {
+                adaptiveThreshold.clearStagedBlinks()
+                coroutineScope.launch(Dispatchers.Default) {
+                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300) // Distinct error tone
+                }
+                Log.d("BlinkMorse", "Panic flutter detected! Aborting character.")
+            }
         ) { decodedChar ->
-            when (decodedChar) {
-                "<BS>" -> {
-                    if (decodedText.isNotEmpty()) {
-                        decodedText = decodedText.dropLast(1)
-                        Log.d("BlinkMorse", "BACKSPACE executed. Text is now: '$decodedText'")
+            if (isTest1Active) {
+                // STRICT EVALUATION MODE
+                // Force learning from all garbage to capture raw fatigue drift
+                adaptiveThreshold.commitStagedBlinks() 
+                
+                // Disable prosigns. Treat invalid strings ("") or disabled commands as "*"
+                val isGarbageOrCommand = decodedChar.isEmpty() || decodedChar == "<BS>" || decodedChar == "<SPEAK>"
+                val charToAppend = if (isGarbageOrCommand) "*" else decodedChar
+                
+                decodedText += charToAppend
+                sessionLogger.attachDecodedChar(charToAppend)
+
+                coroutineScope.launch(Dispatchers.Default) {
+                    if (isGarbageOrCommand) {
+                        toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 150)
+                    } else {
+                        toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                     }
                 }
-                "<SPEAK>" -> {
-                    if (decodedText.isNotEmpty()) {
-                        tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
-                        decodedText = ""
+
+                // Auto-finish Test 1 using the strict length limit
+                if (decodedText.length >= TEST_1_TARGET_LENGTH) {
+                    coroutineScope.launch(Dispatchers.Main) {
+                        val fileName = sessionLogger.exportSession(context)
+                        if (fileName != null) {
+                            Toast.makeText(context, "Saved as $fileName", Toast.LENGTH_LONG).show()
+                        }
+                        isTest1Active = false
+                        updateUIState(AppState.READY_TYPING, "Typing Mode")
                     }
                 }
-                "?" -> { }
-                else -> {
-                    decodedText += decodedChar
-                    
-                    // Auto-finish Test 1
-                    if (isTest1Active && decodedText == "CAVITE STATE UNIV") {
-                        coroutineScope.launch(Dispatchers.Main) {
-                            val fileName = sessionLogger.exportSession(context)
-                            if (fileName != null) {
-                                Toast.makeText(context, "Saved as $fileName", Toast.LENGTH_LONG).show()
+            } else {
+                // NORMAL TYPING MODE
+                if (decodedChar.isNotEmpty()) {
+                    // Strict match successful -> Commit staged blinks to baseline
+                    adaptiveThreshold.commitStagedBlinks()
+
+                    when (decodedChar) {
+                        "<BS>" -> {
+                            if (decodedText.isNotEmpty()) {
+                                decodedText = decodedText.dropLast(1)
+                                Log.d("BlinkMorse", "BACKSPACE executed. Text is now: '$decodedText'")
                             }
-                            isTest1Active = false
-                            updateUIState(AppState.READY_TYPING, "Typing Mode")
+                        }
+                        "<SPEAK>" -> {
+                            if (decodedText.isNotEmpty()) {
+                                tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
+                                decodedText = ""
+                            }
+                        }
+                        else -> {
+                            decodedText += decodedChar
                         }
                     }
-                }
-            }
+                    
+                    sessionLogger.attachDecodedChar(decodedChar)
 
-            sessionLogger.attachDecodedChar(decodedChar)
-
-            coroutineScope.launch(Dispatchers.Default) {
-                when (decodedChar) {
-                    "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
-                    "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
-                    "?" -> toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 150)
-                    else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                    coroutineScope.launch(Dispatchers.Default) {
+                        when (decodedChar) {
+                            "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
+                            "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
+                            else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                        }
+                    }
+                } else {
+                    // Empty string means strict match failed (invalid sequence)
+                    adaptiveThreshold.clearStagedBlinks()
+                    coroutineScope.launch(Dispatchers.Default) {
+                        toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 150)
+                    }
                 }
             }
         }
@@ -457,7 +499,9 @@ fun BlinkMorseUI() {
                     ear: Float?
                 ) {
                     coroutineScope.launch(Dispatchers.Main) {
-                        faceDetectedState = isFaceDetected
+                        if (faceDetectedState != isFaceDetected) {
+                            faceDetectedState = isFaceDetected
+                        }
 
                         if (isFaceDetected && ear != null) {
                             val blinkResult = blinkDetector.update(ear)
@@ -469,6 +513,7 @@ fun BlinkMorseUI() {
                                     AppState.CALIBRATING_SHORT -> {
                                         adaptiveThreshold.seedShortSample(duration.toFloat())
                                         shortCalibCount++
+                                        currentSymbols += "." // Accumulate short blinks in live buffer
                                         sessionLogger.logBlink(
                                             durationMs = duration,
                                             shortCenter = adaptiveThreshold.shortCenter,
@@ -480,7 +525,7 @@ fun BlinkMorseUI() {
                                         coroutineScope.launch(Dispatchers.Default) {
                                             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
                                         }
-                                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [$shortCalibCount/5]")
+                                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [$shortCalibCount/10]")
                                         
                                         // Trigger Visual Flash
                                         isFlashing = true
@@ -489,13 +534,15 @@ fun BlinkMorseUI() {
                                             isFlashing = false
                                         }
                                         
-                                        if (shortCalibCount >= 5) {
-                                            updateUIState(AppState.CALIBRATING_LONG, "Now perform 5 long blinks (dashes) [0/5]")
+                                        if (shortCalibCount >= 10) {
+                                            currentSymbols = "" // Clear for next phase
+                                            updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [0/10]")
                                         }
                                     }
                                     AppState.CALIBRATING_LONG -> {
                                         adaptiveThreshold.seedLongSample(duration.toFloat())
                                         longCalibCount++
+                                        currentSymbols += "-" // Accumulate long blinks in live buffer
                                         sessionLogger.logBlink(
                                             durationMs = duration,
                                             shortCenter = adaptiveThreshold.shortCenter,
@@ -507,7 +554,7 @@ fun BlinkMorseUI() {
                                         coroutineScope.launch(Dispatchers.Default) {
                                             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
                                         }
-                                        updateUIState(AppState.CALIBRATING_LONG, "Now perform 5 long blinks (dashes) [$longCalibCount/5]")
+                                        updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [$longCalibCount/10]")
                                         
                                         // Trigger Visual Flash
                                         isFlashing = true
@@ -516,30 +563,51 @@ fun BlinkMorseUI() {
                                             isFlashing = false
                                         }
                                         
-                                        if (longCalibCount >= 5) {
-                                            val prompt = if (isTest1Active) "TEST 1: Spell 'CAVITE STATE UNIV'" else "Typing Mode"
-                                            updateUIState(AppState.READY_TYPING, prompt)
-                                            coroutineScope.launch(Dispatchers.Default) {
-                                                toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
+                                        if (longCalibCount >= 10) {
+                                            currentSymbols = "" // Clear for typing phase
+                                            if (adaptiveThreshold.hasValidCalibration()) {
+                                                val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                                                updateUIState(AppState.READY_TYPING, prompt)
+                                                coroutineScope.launch(Dispatchers.Default) {
+                                                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
+                                                }
+                                            } else {
+                                                updateUIState(AppState.CALIBRATION_FAILED, "Calibration Failed: Blinks not distinct enough. Please Recalibrate.")
+                                                coroutineScope.launch(Dispatchers.Default) {
+                                                    toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 300)
+                                                }
                                             }
                                         }
+                                    }
+                                    AppState.CALIBRATION_FAILED -> {
+                                        // Block further blinks until user resets
                                     }
                                     AppState.READY_TYPING -> {
                                         val symbol = adaptiveThreshold.classifyAndAdapt(duration)
 
-                                        coroutineScope.launch(Dispatchers.Default) {
-                                            if (symbol == ".") {
-                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
-                                            } else if (symbol == "-") {
-                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+                                        val symbolAccepted = morseDecoder.addSymbol(symbol)
+
+                                        if (!symbolAccepted) {
+                                            // The blink caused a 6-symbol abort. 
+                                            // Clear the staged medians so the math doesn't corrupt.
+                                            // (Sound buzz handled inside onAbort)
+                                            adaptiveThreshold.clearStagedBlinks()
+                                        } else {
+                                            // Normal Blink -> Play Dot/Dash
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                if (symbol == ".") {
+                                                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
+                                                } else if (symbol == "-") {
+                                                    toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+                                                }
                                             }
-                                        }
-                                        
-                                        // Trigger Visual Flash
-                                        isFlashing = true
-                                        coroutineScope.launch {
-                                            delay(150)
-                                            isFlashing = false
+                                            
+                                            // Trigger Visual Flash
+                                            isFlashing = true
+                                            coroutineScope.launch {
+                                                delay(150)
+                                                isFlashing = false
+                                            }
                                         }
 
                                         sessionLogger.logBlink(
@@ -558,8 +626,6 @@ fun BlinkMorseUI() {
                                             adaptiveThreshold.shortCenter,
                                             adaptiveThreshold.longCenter
                                         )
-
-                                        morseDecoder.addSymbol(symbol)
                                     }
                                 }
                             }
@@ -599,6 +665,8 @@ fun BlinkMorseUI() {
                 factory = { ctx ->
                     PreviewView(ctx).apply {
                         scaleType = PreviewView.ScaleType.FILL_CENTER
+                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                        
                         val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
                         cameraProviderFuture.addListener({
                             val cameraProvider = cameraProviderFuture.get()
@@ -607,11 +675,31 @@ fun BlinkMorseUI() {
                                 it.surfaceProvider = surfaceProvider
                             }
 
+                            val resolutionSelector = androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                                .setResolutionStrategy(
+                                    androidx.camera.core.resolutionselector.ResolutionStrategy(
+                                        android.util.Size(480, 640),
+                                        androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                    )
+                                )
+                                .build()
+
                             val imageAnalysis = ImageAnalysis.Builder()
+                                .setResolutionSelector(resolutionSelector)
                                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                                 .build()
 
+                            var lastFpsTime = System.currentTimeMillis()
+                            var frameCount = 0
+
                             imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                                frameCount++
+                                val now = System.currentTimeMillis()
+                                if (now - lastFpsTime >= 1000) {
+                                    currentFps = frameCount
+                                    frameCount = 0
+                                    lastFpsTime = now
+                                }
                                 detector.detectLiveStream(imageProxy)
                             }
 
@@ -657,6 +745,22 @@ fun BlinkMorseUI() {
                     fontWeight = FontWeight.Bold
                 )
             }
+
+            // FPS Overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 48.dp, end = 16.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "FPS: $currentFps",
+                    color = Color.White,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
 
         // --- BOTTOM 70%: UI Layout ---
@@ -673,7 +777,13 @@ fun BlinkMorseUI() {
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = if (appState == AppState.CALIBRATION_FAILED) Color(0xCCD32F2F) else Color.Transparent, 
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(if (appState == AppState.CALIBRATION_FAILED) 8.dp else 0.dp)
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -685,7 +795,7 @@ fun BlinkMorseUI() {
                 label = "FlashAnimation"
             )
 
-            // Live Buffer
+            // Live Buffer (Always Visible)
             Text(
                 text = currentSymbols.ifEmpty { " " }, // Prevents UI jitter
                 color = Color.Green,
@@ -727,17 +837,36 @@ fun BlinkMorseUI() {
             ) {
                 Button(
                     onClick = {
-                        isTest1Active = true
-                        sessionLogger.startNewSession()
-                        decodedText = ""
-                        adaptiveThreshold.reset()
-                        shortCalibCount = 0
-                        longCalibCount = 0
-                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [0/5]")
-                        morseDecoder.clear()
+                        if (isTest1Active) {
+                            // Cancel Test
+                            isTest1Active = false
+                            if (adaptiveThreshold.hasValidCalibration()) {
+                                updateUIState(AppState.READY_TYPING, "Typing Mode")
+                            } else {
+                                // If they cancelled DURING calibration, the threshold is still wiped.
+                                // Fallback to a fresh normal calibration.
+                                adaptiveThreshold.reset()
+                                shortCalibCount = 0
+                                longCalibCount = 0
+                                currentSymbols = ""
+                                updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                            }
+                        } else {
+                            // Start Test
+                            isTest1Active = true
+                            sessionLogger.startNewSession()
+                            decodedText = ""
+                            adaptiveThreshold.reset()
+                            shortCalibCount = 0
+                            longCalibCount = 0
+                            currentSymbols = ""
+                            updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1976D2)) // Blue
-                ) { Text("Start Test 1", color = Color.White) }
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isTest1Active) Color(0xFFD32F2F) else Color(0xFF1976D2)
+                    )
+                ) { Text(if (isTest1Active) "Cancel Test 1" else "Start Test 1", color = Color.White) }
 
                 IconButton(
                     onClick = { showDataManagerBottomSheet(context) }
@@ -782,12 +911,18 @@ fun BlinkMorseUI() {
                         adaptiveThreshold.reset()
                         shortCalibCount = 0
                         longCalibCount = 0
-                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 5 short blinks (dots) [0/5]")
+                        currentSymbols = ""
+                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
                         decodedText = ""
                         morseDecoder.clear()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
-                ) { Text("Recalibrate", color = Color.White) }
+                    enabled = !isTest1Active,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (!isTest1Active) Color.Red else Color(0x66D32F2F),
+                        disabledContainerColor = Color(0x66D32F2F),
+                        disabledContentColor = Color(0x99FFFFFF)
+                    )
+                ) { Text("Recalibrate", color = if (!isTest1Active) Color.White else Color(0x99FFFFFF)) }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
