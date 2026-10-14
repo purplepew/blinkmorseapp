@@ -126,8 +126,6 @@ fun IntroPanelScreen(
                     .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
                     .padding(12.dp)
             ) {
-                CornerAccents(color = HudCyan, length = 12f, strokeWidth = 4f)
-                
                 Column(
                     verticalArrangement = Arrangement.SpaceAround,
                     modifier = Modifier.fillMaxHeight()
@@ -159,8 +157,6 @@ fun IntroPanelScreen(
                 .border(1.5.dp, HudCyan, RoundedCornerShape(24.dp))
                 .padding(16.dp)
         ) {
-            CornerAccents(color = HudCyan, length = 24f, strokeWidth = 5f, offset = 12f)
-
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,

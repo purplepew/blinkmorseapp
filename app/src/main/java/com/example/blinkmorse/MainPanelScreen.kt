@@ -61,7 +61,6 @@ fun MainPanelScreen(
                 .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
                 .padding(10.dp),
         ) {
-            CornerAccents(color = HudCyan, length = 12f, strokeWidth = 4f)
             MorseCheatSheetGrid()
         }
 
@@ -76,7 +75,6 @@ fun MainPanelScreen(
                 .border(1.5.dp, HudCyan, RoundedCornerShape(24.dp))
                 .padding(16.dp),
         ) {
-            CornerAccents(color = HudCyan, length = 24f, strokeWidth = 5f, offset = 12f)
 
             Column(
                 modifier = Modifier.fillMaxSize(),
@@ -175,11 +173,12 @@ fun MainPanelScreen(
                             lineHeight = 30.sp,
                         )
                     } else {
-                        AutoScalingHolographicTextBox(
+                        AutoScalingText(
                             text = decodedText.ifEmpty { "START BLINKING..." },
+                            maxFontSize = 32.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(150.dp),
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
                 }
@@ -188,7 +187,7 @@ fun MainPanelScreen(
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // Keyboard Test Input Bar
                     Row(
@@ -207,7 +206,7 @@ fun MainPanelScreen(
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.padding(end = 6.dp)
+                            modifier = Modifier.padding(end = 6.dp),
                         )
                         BasicTextField(
                             value = decodedText,
@@ -216,11 +215,11 @@ fun MainPanelScreen(
                                 color = Color(0xFFA5F3FC),
                                 fontSize = 12.sp,
                                 fontFamily = FontFamily.Monospace,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
                             ),
                             cursorBrush = SolidColor(HudCyan),
                             singleLine = true,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                     }
 
@@ -232,13 +231,13 @@ fun MainPanelScreen(
                             .background(HudRedDark)
                             .border(1.5.dp, HudRed, RoundedCornerShape(12.dp))
                             .clickable { onNavigateToHelp() },
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "?",
                             color = Color(0xFFFCA5A5),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp
+                            fontSize = 18.sp,
                         )
                     }
                     
@@ -252,14 +251,14 @@ fun MainPanelScreen(
                             .border(1.5.dp, HudGreen, RoundedCornerShape(12.dp))
                             .clickable { onNavigateToMenu() }
                             .padding(horizontal = 16.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "Menu",
                             color = Color(0xFF6EE7B7),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
-                            letterSpacing = 1.sp
+                            letterSpacing = 1.sp,
                         )
                     }
                 }

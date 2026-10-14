@@ -143,6 +143,7 @@ fun Modifier.drawCyberGrid(gridColor: Color = Color(0x1400B4FF)) = this.drawBehi
     }
 }
 
+@Suppress("unused")
 @Composable
 fun CornerAccents(color: Color, length: Float, strokeWidth: Float, offset: Float = -4f) {
     Canvas(modifier = Modifier.fillMaxSize()) {
@@ -424,8 +425,6 @@ fun ExcalidrawStyleTextBox(
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
-        CornerAccents(color = borderColor, length = 24f, strokeWidth = 5f, offset = 12f)
-
         Text(
             text = text,
             color = textColor,
@@ -500,8 +499,6 @@ fun AutoScalingHolographicTextBox(
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        CornerAccents(color = borderColor, length = 20f, strokeWidth = 4f, offset = 8f)
-
         Text(
             text = text,
             color = textColor,
