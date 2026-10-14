@@ -164,11 +164,11 @@ fun CornerAccents(color: Color, length: Float, strokeWidth: Float, offset: Float
 fun MorseVisualizer(
     morseCode: String, 
     dotColor: Color = HudCyan,
-    dashColor: Color = HudGreen
+    dashColor: Color = HudGreen,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         morseCode.forEach { char ->
             if (char == '.') {
@@ -176,7 +176,7 @@ fun MorseVisualizer(
                     modifier = Modifier
                         .size(4.dp) 
                         .clip(CircleShape)
-                        .background(dotColor)
+                        .background(dotColor),
                 )
             } else if (char == '-') {
                 Box(
@@ -184,7 +184,7 @@ fun MorseVisualizer(
                         .width(10.dp) 
                         .height(4.dp)
                         .clip(CircleShape)
-                        .background(dashColor)
+                        .background(dashColor),
                 )
             }
         }
@@ -253,11 +253,11 @@ fun MorseCheatSheetGrid() {
                             .background(Color(0x1A00E5FF))
                             .border(0.8.dp, Color(0x3300E5FF), RoundedCornerShape(4.dp))
                             .padding(horizontal = 4.dp, vertical = 2.dp),
-                        contentAlignment = Alignment.CenterStart
+                        contentAlignment = Alignment.CenterStart,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start
+                            horizontalArrangement = Arrangement.Start,
                         ) {
                             Text(
                                 text = letter,
@@ -265,7 +265,7 @@ fun MorseCheatSheetGrid() {
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(12.dp) 
+                                modifier = Modifier.width(14.dp),
                             )
                             MorseVisualizer(morseCode = morse)
                         }
@@ -307,7 +307,7 @@ fun SpecialSignal(label: String, morse: String) {
             .clip(RoundedCornerShape(4.dp))
             .background(Color(0x1A00E5FF))
             .border(0.8.dp, Color(0x3300E5FF), RoundedCornerShape(4.dp))
-            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -315,7 +315,7 @@ fun SpecialSignal(label: String, morse: String) {
                 color = Color(0xFFA5F3FC),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(end = 4.dp)
+                modifier = Modifier.padding(end = 4.dp),
             )
             MorseVisualizer(morseCode = morse) 
         }

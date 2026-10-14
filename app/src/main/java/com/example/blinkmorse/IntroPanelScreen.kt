@@ -29,6 +29,7 @@ fun IntroPanelScreen(
     isFlashing: Boolean = false,
     faceDetectedState: Boolean? = null,
     cameraView: (@Composable () -> Unit)? = null,
+    canSkip: Boolean = false,
     onNavigateToMain: () -> Unit,
 ) {
     Column(
@@ -43,50 +44,19 @@ fun IntroPanelScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(260.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            // Left: Calibration Checklist
-            Box(
+            // Left: Animated Avatar Preview Demo & Live Camera Feed
+            Column(
                 modifier = Modifier
                     .weight(0.66f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(16.dp))
-                    .background(HudCardBg)
-                    .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
-                    .padding(12.dp)
-            ) {
-                CornerAccents(color = HudCyan, length = 12f, strokeWidth = 4f)
-                
-                Column(
-                    verticalArrangement = Arrangement.SpaceAround,
-                    modifier = Modifier.fillMaxHeight()
-                ) {
-                    CalibrationTask(
-                        label = "PERFORM 10 short blinks",
-                        progress = "($shortCount/10)",
-                        isChecked = shortCount >= 10,
-                        labelColor = Color(0xFFA5F3FC)
-                    )
-                    CalibrationTask(
-                        label = "PERFORM 10 long blinks",
-                        progress = "($longCount/10)",
-                        isChecked = longCount >= 10,
-                        labelColor = Color(0xFF67E8F9)
-                    )
-                }
-            }
-
-            // Right: Animated Avatar Preview Demo & Live Camera Feed
-            Column(
-                modifier = Modifier
-                    .weight(0.34f)
-                    .height(130.dp)
-                    .clip(RoundedCornerShape(16.dp))
                     .background(HudAvatarBg)
                     .border(2.dp, HudCyan.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
                     .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Box(
                     modifier = Modifier
@@ -142,6 +112,37 @@ fun IntroPanelScreen(
                         fontSize = 9.5.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 1.sp
+                    )
+                }
+            }
+
+            // Right: Calibration Checklist
+            Box(
+                modifier = Modifier
+                    .weight(0.34f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(HudCardBg)
+                    .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
+                    .padding(12.dp)
+            ) {
+                CornerAccents(color = HudCyan, length = 12f, strokeWidth = 4f)
+                
+                Column(
+                    verticalArrangement = Arrangement.SpaceAround,
+                    modifier = Modifier.fillMaxHeight()
+                ) {
+                    CalibrationTask(
+                        label = "10 short blinks",
+                        progress = "($shortCount/10)",
+                        isChecked = shortCount >= 10,
+                        labelColor = Color(0xFFA5F3FC)
+                    )
+                    CalibrationTask(
+                        label = "10 long blinks",
+                        progress = "($longCount/10)",
+                        isChecked = longCount >= 10,
+                        labelColor = Color(0xFF67E8F9)
                     )
                 }
             }
@@ -221,26 +222,48 @@ fun IntroPanelScreen(
                 // Bottom Action CTA
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(if ((shortCount >= 10) && (longCount >= 10)) Color(0xCC083344) else Color(0x44083344))
-                            .border(
-                                1.5.dp,
-                                if ((shortCount >= 10) && (longCount >= 10)) HudGreen else HudCyan.copy(alpha = 0.5f),
-                                RoundedCornerShape(12.dp)
+                    val isComplete = (shortCount >= 10) && (longCount >= 10)
+                    if (isComplete || canSkip) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(if (isComplete) Color(0xCC083344) else Color(0x44083344))
+                                .border(
+                                    1.5.dp,
+                                    if (isComplete) HudGreen else HudCyan.copy(alpha = 0.5f),
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .clickable { onNavigateToMain() }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = if (isComplete) "PROCEED TO MAIN →" else "SKIP TO MAIN →",
+                                color = if (isComplete) HudGreen else Color(0xFF67E8F9),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                             )
-                            .clickable { onNavigateToMain() }
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        Text(
-                            text = if ((shortCount >= 10) && (longCount >= 10)) "PROCEED TO MAIN →" else "SKIP TO MAIN →",
-                            color = if ((shortCount >= 10) && (longCount >= 10)) HudGreen else Color(0xFF67E8F9),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0x22083344))
+                                .border(
+                                    1.dp,
+                                    Color.Gray.copy(alpha = 0.4f),
+                                    RoundedCornerShape(12.dp),
+                                )
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            Text(
+                                text = "COMPLETE CALIBRATION",
+                                color = Color.Gray.copy(alpha = 0.6f),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
                     }
                 }
             }

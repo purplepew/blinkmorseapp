@@ -379,6 +379,9 @@ fun BlinkMorseUI() {
     val adaptiveThreshold = remember { AdaptiveThreshold() }
     val sessionLogger = remember { SessionLogger() }
     
+    val sharedPrefs = context.getSharedPreferences("blinkmorse_prefs", Context.MODE_PRIVATE)
+    var hasSavedCalibration by remember { mutableStateOf(adaptiveThreshold.hasSavedCalibration(sharedPrefs)) }
+    
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
 
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
@@ -567,6 +570,8 @@ fun BlinkMorseUI() {
                                         if (longCalibCount >= 10) {
                                             currentSymbols = "" // Clear for typing phase
                                             if (adaptiveThreshold.hasValidCalibration()) {
+                                                adaptiveThreshold.saveToPreferences(sharedPrefs)
+                                                hasSavedCalibration = true
                                                 val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
                                                 updateUIState(AppState.READY_TYPING, prompt)
                                                 coroutineScope.launch(Dispatchers.Default) {
@@ -737,7 +742,20 @@ fun BlinkMorseUI() {
             isFlashing = isFlashing,
             faceDetectedState = faceDetectedState,
             cameraView = cameraViewComposable,
-            onNavigateToMain = { currentScreen = "main" }
+            canSkip = hasSavedCalibration,
+            onNavigateToMain = { 
+                if (shortCalibCount < 10 || longCalibCount < 10) {
+                    if (adaptiveThreshold.loadFromPreferences(sharedPrefs)) {
+                        appState = AppState.READY_TYPING
+                        promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                        currentScreen = "main"
+                    }
+                } else {
+                    appState = AppState.READY_TYPING
+                    promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                    currentScreen = "main"
+                }
+            }
         )
         "main" -> MainPanelScreen(
             currentSymbols = currentSymbols,

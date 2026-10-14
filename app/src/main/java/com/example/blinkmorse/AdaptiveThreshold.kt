@@ -122,4 +122,41 @@ class AdaptiveThreshold(
         threshold = 0f
         lastAdaptation = "N/A"
     }
+
+    fun saveToPreferences(prefs: android.content.SharedPreferences) {
+        val shortStr = shortSamples.joinToString(",")
+        val longStr = longSamples.joinToString(",")
+        prefs.edit()
+            .putString("shortSamples", shortStr)
+            .putString("longSamples", longStr)
+            .apply()
+    }
+
+    fun loadFromPreferences(prefs: android.content.SharedPreferences): Boolean {
+        val shortStr = prefs.getString("shortSamples", "") ?: ""
+        val longStr = prefs.getString("longSamples", "") ?: ""
+        
+        if (shortStr.isNotEmpty() && longStr.isNotEmpty()) {
+            try {
+                shortSamples.clear()
+                shortSamples.addAll(shortStr.split(",").map { it.toFloat() })
+                
+                longSamples.clear()
+                longSamples.addAll(longStr.split(",").map { it.toFloat() })
+                
+                update()
+                return hasValidCalibration()
+            } catch (e: Exception) {
+                reset()
+                return false
+            }
+        }
+        return false
+    }
+
+    fun hasSavedCalibration(prefs: android.content.SharedPreferences): Boolean {
+        val shortStr = prefs.getString("shortSamples", "") ?: ""
+        val longStr = prefs.getString("longSamples", "") ?: ""
+        return shortStr.isNotEmpty() && longStr.isNotEmpty()
+    }
 }

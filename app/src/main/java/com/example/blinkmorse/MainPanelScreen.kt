@@ -49,7 +49,7 @@ fun MainPanelScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(IntrinsicSize.Min),
+                .height(260.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // Left: Morse Reference Cheat Sheet Matrix
