@@ -12,6 +12,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -32,11 +33,16 @@ fun MainPanelScreen(
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
     isFlashing: Boolean,
-    cameraView: @Composable () -> Unit,
+    cameraView: @Composable () -> Unit = {},
     onTextChange: (String) -> Unit = {},
     onNavigateToHelp: () -> Unit,
     onNavigateToMenu: () -> Unit,
 ) {
+    // Hidden Camera Preview container to keep CameraX ImageAnalysis analyzer active in background
+    Box(modifier = Modifier.size(1.dp).alpha(0f)) {
+        cameraView()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -45,132 +51,99 @@ fun MainPanelScreen(
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Top Section: Morse Cheat Sheet & Live Face Tracker
-        Row(
+        // Top Section: Full-Width Morse Cheat Sheet Matrix
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                .weight(0.38f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(HudCardBgDark)
+                .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
+                .padding(10.dp),
         ) {
-            // Left: Morse Reference Cheat Sheet Matrix
-            Box(
-                modifier = Modifier
-                    .weight(0.66f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(HudCardBgDark)
-                    .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
-                    .padding(14.dp)
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    MorseCheatSheetGrid()
-                }
-            }
-
-            // Right: Active Face Tracking Camera Widget
-            Column(
-                modifier = Modifier
-                    .weight(0.34f)
-                    .height(130.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(HudAvatarBg)
-                    .border(2.dp, HudCyan.copy(alpha = 0.9f), RoundedCornerShape(16.dp))
-                    .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Camera Feed / Avatar Frame - fills available vertical space!
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF082F49))
-                        .border(1.dp, HudCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    cameraView()
-                }
-                
-                Spacer(modifier = Modifier.height(4.dp))
-                
-                // Face Active Status Badge
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(vertical = 2.dp)
-                ) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-                    val alpha by infiniteTransition.animateFloat(
-                        initialValue = 1f,
-                        targetValue = 0.3f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(600),
-                            repeatMode = RepeatMode.Reverse
-                        ),
-                        label = "alpha"
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (faceDetectedState == true) HudGreen.copy(alpha = alpha) else HudRed.copy(alpha = alpha)
-                            )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = if (faceDetectedState == true) "Face Active" else "No Face",
-                        color = if (faceDetectedState == true) Color(0xFF6EE7B7) else Color(0xFFFCA5A5),
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                }
-            }
+            CornerAccents(color = HudCyan, length = 12f, strokeWidth = 4f)
+            MorseCheatSheetGrid()
         }
 
         // Main Live Display Board
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(0.62f)
                 .clip(RoundedCornerShape(24.dp))
                 .background(HudBg)
                 .drawCyberGrid()
                 .border(1.5.dp, HudCyan, RoundedCornerShape(24.dp))
-                .padding(16.dp)
+                .padding(16.dp),
         ) {
             CornerAccents(color = HudCyan, length = 24f, strokeWidth = 5f, offset = 12f)
 
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+                verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                // Fixed Width Top Morse Code Buffer Indicator (capacity for 6 symbols)
+                // Top Buffer Bar Row with Compact Face Status Indicator
                 Box(
-                    modifier = Modifier
-                        .widthIn(min = 160.dp)
-                        .height(36.dp)
-                        .clip(CircleShape)
-                        .background(if (isFlashing) HudGreen else HudGreenDark)
-                        .border(1.5.dp, HudGreen, CircleShape)
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    LargeMorseVisualizer(
-                        morseCode = currentSymbols,
-                        maxSymbols = 6
-                    )
+                    // Centered Live Morse Buffer Capsule (capacity for 6 symbols)
+                    Box(
+                        modifier = Modifier
+                            .widthIn(min = 160.dp)
+                            .height(36.dp)
+                            .clip(CircleShape)
+                            .background(if (isFlashing) HudGreen else HudGreenDark)
+                            .border(1.5.dp, HudGreen, CircleShape)
+                            .padding(horizontal = 16.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        LargeMorseVisualizer(
+                            morseCode = currentSymbols,
+                            maxSymbols = 6,
+                        )
+                    }
+
+                    // Compact Face Tracking Indicator on the Right
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (faceDetectedState == true) Color(0x2200FF88) else Color(0x33FF2D55))
+                            .border(
+                                1.dp,
+                                if (faceDetectedState == true) HudGreen.copy(alpha = 0.6f) else HudRed.copy(alpha = 0.6f),
+                                RoundedCornerShape(12.dp),
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                        val alpha by infiniteTransition.animateFloat(
+                            initialValue = 1f,
+                            targetValue = 0.3f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(600),
+                                repeatMode = RepeatMode.Reverse,
+                            ),
+                            label = "alpha",
+                        )
+                        Text(
+                            text = if (faceDetectedState == true) "● Face Active" else "⚠ Face Lost",
+                            color = if (faceDetectedState == true) HudGreen.copy(alpha = alpha) else HudRed.copy(alpha = alpha),
+                            fontSize = 9.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 0.5.sp,
+                        )
+                    }
                 }
 
                 // Sentence Display Area with Auto-Scaling Holographic Text
                 Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     if (isTest1Active) {
                         val annotatedString = buildAnnotatedString {
@@ -199,15 +172,14 @@ fun MainPanelScreen(
                             fontWeight = FontWeight.ExtraBold,
                             textAlign = TextAlign.Center,
                             letterSpacing = 1.5.sp,
-                            lineHeight = 30.sp
+                            lineHeight = 30.sp,
                         )
                     } else {
-                        AutoScalingText(
+                        AutoScalingHolographicTextBox(
                             text = decodedText.ifEmpty { "START BLINKING..." },
-                            maxFontSize = 32.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
+                                .height(150.dp),
                         )
                     }
                 }
@@ -227,7 +199,7 @@ fun MainPanelScreen(
                             .background(HudCardBgDark)
                             .border(1.dp, HudCyan.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
                             .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "TYPE:",

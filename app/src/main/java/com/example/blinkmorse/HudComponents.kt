@@ -227,23 +227,21 @@ fun LargeMorseVisualizer(
 @Composable
 fun MorseCheatSheetGrid() {
     val morseMap = listOf(
-        "A" to ".-", "B" to "-...", "C" to "-.-.", "D" to "-..",
-        "E" to ".", "F" to "..-.", "G" to "--.", "H" to "....",
-        "I" to "..", "J" to ".---", "K" to "-.-", "L" to ".-..",
-        "M" to "--", "N" to "-.", "O" to "---", "P" to ".--.",
-        "Q" to "--.-", "R" to ".-.", "S" to "...", "T" to "-",
-        "U" to "..-", "V" to "...-", "W" to ".--", "X" to "-..-",
+        "A" to ".-", "B" to "-...", "C" to "-.-.", "D" to "-..", "E" to ".", "F" to "..-.",
+        "G" to "--.", "H" to "....", "I" to "..", "J" to ".---", "K" to "-.-", "L" to ".-..",
+        "M" to "--", "N" to "-.", "O" to "---", "P" to ".--.", "Q" to "--.-", "R" to ".-.",
+        "S" to "...", "T" to "-", "U" to "..-", "V" to "...-", "W" to ".--", "X" to "-..-",
         "Y" to "-.--", "Z" to "--.."
     )
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(3.dp)
     ) {
-        morseMap.chunked(4).forEach { rowItems ->
+        morseMap.chunked(6).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 rowItems.forEach { (letter, morse) ->
                     Box(
@@ -252,7 +250,7 @@ fun MorseCheatSheetGrid() {
                             .clip(RoundedCornerShape(4.dp))
                             .background(Color(0x1A00E5FF))
                             .border(0.8.dp, Color(0x3300E5FF), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 4.dp, vertical = 2.dp),
+                            .padding(horizontal = 2.dp, vertical = 2.dp),
                         contentAlignment = Alignment.CenterStart,
                     ) {
                         Row(
@@ -262,18 +260,18 @@ fun MorseCheatSheetGrid() {
                             Text(
                                 text = letter,
                                 color = Color.White, 
-                                fontSize = 10.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(14.dp),
+                                modifier = Modifier.width(10.dp),
                             )
                             MorseVisualizer(morseCode = morse)
                         }
                     }
                 }
                 
-                if (rowItems.size < 4) {
-                    repeat(4 - rowItems.size) {
+                if (rowItems.size < 6) {
+                    repeat(6 - rowItems.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
@@ -441,6 +439,7 @@ fun ExcalidrawStyleTextBox(
     }
 }
 
+@Suppress("unused")
 @Composable
 fun AutoScalingText(
     text: String,
@@ -479,32 +478,29 @@ fun AutoScalingText(
     )
 }
 
-@Suppress("unused")
 @Composable
 fun AutoScalingHolographicTextBox(
     text: String,
     modifier: Modifier = Modifier,
-    maxFontSize: TextUnit = 48.sp,
-    minFontSize: TextUnit = 14.sp,
+    maxFontSize: TextUnit = 32.sp,
+    minFontSize: TextUnit = 12.sp,
     textColor: Color = Color(0xFFA5F3FC),
     borderColor: Color = HudCyan,
     backgroundColor: Color = HudCardBg,
 ) {
     var currentFontSize by remember(text) { mutableStateOf(maxFontSize) }
-    var readyToDraw by remember(text) { mutableStateOf(false) }
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(250.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(backgroundColor)
             .drawCyberGrid()
-            .border(1.5.dp, borderColor, RoundedCornerShape(24.dp))
-            .padding(24.dp),
+            .border(1.5.dp, borderColor, RoundedCornerShape(20.dp))
+            .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        CornerAccents(color = borderColor, length = 24f, strokeWidth = 5f, offset = 12f)
+        CornerAccents(color = borderColor, length = 20f, strokeWidth = 4f, offset = 8f)
 
         Text(
             text = text,
@@ -516,18 +512,10 @@ fun AutoScalingHolographicTextBox(
             lineHeight = (currentFontSize.value * 1.25f).sp,
             softWrap = true,
             overflow = TextOverflow.Clip,
-            modifier = Modifier
-                .fillMaxWidth()
-                .drawWithContent {
-                    if (readyToDraw) {
-                        drawContent()
-                    }
-                },
+            modifier = Modifier.fillMaxWidth(),
             onTextLayout = { textLayoutResult ->
                 if (textLayoutResult.hasVisualOverflow && currentFontSize > minFontSize) {
                     currentFontSize = (currentFontSize.value * 0.9f).sp
-                } else {
-                    readyToDraw = true
                 }
             }
         )
