@@ -168,22 +168,22 @@ fun MorseVisualizer(
     dashColor: Color = HudGreen,
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         morseCode.forEach { char ->
             if (char == '.') {
                 Box(
                     modifier = Modifier
-                        .size(4.dp) 
+                        .size(5.dp) 
                         .clip(CircleShape)
                         .background(dotColor),
                 )
             } else if (char == '-') {
                 Box(
                     modifier = Modifier
-                        .width(10.dp) 
-                        .height(4.dp)
+                        .width(12.dp) 
+                        .height(5.dp)
                         .clip(CircleShape)
                         .background(dashColor),
                 )
@@ -237,42 +237,42 @@ fun MorseCheatSheetGrid() {
 
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(3.dp)
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        morseMap.chunked(6).forEach { rowItems ->
+        morseMap.chunked(5).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(3.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 rowItems.forEach { (letter, morse) ->
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(0x1A00E5FF))
-                            .border(0.8.dp, Color(0x3300E5FF), RoundedCornerShape(4.dp))
-                            .padding(horizontal = 2.dp, vertical = 2.dp),
-                        contentAlignment = Alignment.CenterStart,
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0x26061426))
+                            .border(1.dp, Color(0x3300E5FF), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Start,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = letter,
-                                color = Color.White, 
-                                fontSize = 9.sp,
+                                color = Color(0xFF67E8F9), 
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.width(10.dp),
                             )
                             MorseVisualizer(morseCode = morse)
                         }
                     }
                 }
                 
-                if (rowItems.size < 6) {
-                    repeat(6 - rowItems.size) {
+                if (rowItems.size < 5) {
+                    repeat(5 - rowItems.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }
@@ -282,39 +282,44 @@ fun MorseCheatSheetGrid() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp)
+                .padding(vertical = 3.dp)
                 .height(1.dp)
                 .background(Color(0xFF0F3746))
         )
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SpecialSignal("SPEAK:", ".-.-")
-            SpecialSignal("SPACE:", "..--")
-            SpecialSignal("CLEAR:", "....-")
+            SpecialSignal("SPEAK:", ".-.-", modifier = Modifier.weight(1f))
+            SpecialSignal("SPACE:", "..--", modifier = Modifier.weight(1f))
+            SpecialSignal("CLEAR:", "....-", modifier = Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-fun SpecialSignal(label: String, morse: String) {
+fun SpecialSignal(label: String, morse: String, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color(0x1A00E5FF))
-            .border(0.8.dp, Color(0x3300E5FF), RoundedCornerShape(4.dp))
-            .padding(horizontal = 4.dp, vertical = 2.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0x26061426))
+            .border(1.dp, Color(0x3300E5FF), RoundedCornerShape(6.dp))
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
                 text = label, 
                 color = Color(0xFFA5F3FC),
-                fontSize = 8.sp,
+                fontSize = 8.5.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(end = 4.dp),
+                fontFamily = FontFamily.Monospace,
             )
             MorseVisualizer(morseCode = morse) 
         }
