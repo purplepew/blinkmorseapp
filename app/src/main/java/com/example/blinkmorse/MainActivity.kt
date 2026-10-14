@@ -55,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -653,289 +654,151 @@ fun BlinkMorseUI() {
         }
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        // --- TOP 30%: Camera Container & Tracking Badge ---
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.3f)
-        ) {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    PreviewView(ctx).apply {
-                        scaleType = PreviewView.ScaleType.FILL_CENTER
-                        implementationMode = PreviewView.ImplementationMode.PERFORMANCE
-                        
-                        val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                        cameraProviderFuture.addListener({
-                            val cameraProvider = cameraProviderFuture.get()
+    var currentScreen by rememberSaveable { mutableStateOf("intro") }
 
-                            val preview = Preview.Builder().build().also {
-                                it.surfaceProvider = surfaceProvider
-                            }
+    val cameraViewComposable: @Composable () -> Unit = {
+        AndroidView(
+            modifier = Modifier.fillMaxSize(),
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    scaleType = PreviewView.ScaleType.FILL_CENTER
+                    implementationMode = PreviewView.ImplementationMode.PERFORMANCE
+                    
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                    cameraProviderFuture.addListener({
+                        val cameraProvider = cameraProviderFuture.get()
 
-                            val resolutionSelector = androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
-                                .setResolutionStrategy(
-                                    androidx.camera.core.resolutionselector.ResolutionStrategy(
-                                        android.util.Size(480, 640),
-                                        androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
-                                    )
+                        val preview = Preview.Builder().build().also {
+                            it.surfaceProvider = surfaceProvider
+                        }
+
+                        val resolutionSelector = androidx.camera.core.resolutionselector.ResolutionSelector.Builder()
+                            .setResolutionStrategy(
+                                androidx.camera.core.resolutionselector.ResolutionStrategy(
+                                    android.util.Size(480, 640),
+                                    androidx.camera.core.resolutionselector.ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
                                 )
-                                .build()
+                            )
+                            .build()
 
-                            val imageAnalysis = ImageAnalysis.Builder()
-                                .setResolutionSelector(resolutionSelector)
-                                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                                .build()
+                        val imageAnalysis = ImageAnalysis.Builder()
+                            .setResolutionSelector(resolutionSelector)
+                            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                            .build()
 
-                            var lastFpsTime = System.currentTimeMillis()
-                            var frameCount = 0
+                        var lastFpsTime = System.currentTimeMillis()
+                        var frameCount = 0
 
-                            imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                                frameCount++
-                                val now = System.currentTimeMillis()
-                                if (now - lastFpsTime >= 1000) {
-                                    currentFps = frameCount
-                                    frameCount = 0
-                                    lastFpsTime = now
-                                }
-                                detector.detectLiveStream(imageProxy)
+                        imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
+                            frameCount++
+                            val now = System.currentTimeMillis()
+                            if (now - lastFpsTime >= 1000) {
+                                currentFps = frameCount
+                                frameCount = 0
+                                lastFpsTime = now
                             }
+                            detector.detectLiveStream(imageProxy)
+                        }
 
-                            val cameraSelector = CameraSelector.Builder()
-                                .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
-                                .build()
+                        val cameraSelector = CameraSelector.Builder()
+                            .requireLensFacing(CameraSelector.LENS_FACING_FRONT)
+                            .build()
 
-                            try {
-                                cameraProvider.unbindAll()
-                                cameraProvider.bindToLifecycle(
-                                    lifecycleOwner,
-                                    cameraSelector,
-                                    preview,
-                                    imageAnalysis
-                                )
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }, ContextCompat.getMainExecutor(ctx))
-                    }
+                        try {
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                preview,
+                                imageAnalysis
+                            )
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }, ContextCompat.getMainExecutor(ctx))
                 }
-            )
-
-            // Tracking Badge Overlay
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 48.dp)
-                    .background(
-                        color = when {
-                            faceDetectedState == true -> Color(0xCC2E7D32) // Green
-                            faceDetectedState == false -> Color(0xCCD32F2F) // Red
-                            else -> Color(0xCC333333) // Gray
-                        },
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                    .padding(horizontal = 16.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = if (faceDetectedState == true) "Face Detected" else "No Face",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold
-                )
             }
+        )
+    }
 
-            // FPS Overlay
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(top = 48.dp, end = 16.dp)
-                    .background(Color(0xCC000000), RoundedCornerShape(8.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            ) {
-                Text(
-                    text = "FPS: $currentFps",
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+    LaunchedEffect(shortCalibCount, longCalibCount, currentScreen) {
+        if (currentScreen == "intro" && shortCalibCount >= 10 && longCalibCount >= 10) {
+            delay(800)
+            currentScreen = "main"
         }
+    }
 
-        // --- BOTTOM 70%: UI Layout ---
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(0.7f)
-                .padding(16.dp)
-        ) {
-            // Prompt/State Text
-            Text(
-                text = promptMessage,
-                color = Color.White,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        color = if (appState == AppState.CALIBRATION_FAILED) Color(0xCCD32F2F) else Color.Transparent, 
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(if (appState == AppState.CALIBRATION_FAILED) 8.dp else 0.dp)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Animated Live Buffer Background Color
-            val bufferBackgroundColor by animateColorAsState(
-                targetValue = if (isFlashing) Color.DarkGray else Color(0xCC000000),
-                animationSpec = tween(durationMillis = 150),
-                label = "FlashAnimation"
-            )
-
-            // Live Buffer (Always Visible)
-            Text(
-                text = currentSymbols.ifEmpty { " " }, // Prevents UI jitter
-                color = Color.Green,
-                fontSize = 48.sp,
-                fontWeight = FontWeight.ExtraBold,
-                textAlign = TextAlign.Center,
-                letterSpacing = 4.sp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(bufferBackgroundColor, RoundedCornerShape(8.dp))
-                    .padding(8.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Message Output
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = decodedText,
-                    color = Color.Cyan,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Test 1 Data Controls Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Button(
-                    onClick = {
-                        if (isTest1Active) {
-                            // Cancel Test
-                            isTest1Active = false
-                            if (adaptiveThreshold.hasValidCalibration()) {
-                                updateUIState(AppState.READY_TYPING, "Typing Mode")
-                            } else {
-                                // If they cancelled DURING calibration, the threshold is still wiped.
-                                // Fallback to a fresh normal calibration.
-                                adaptiveThreshold.reset()
-                                shortCalibCount = 0
-                                longCalibCount = 0
-                                currentSymbols = ""
-                                updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
-                            }
-                        } else {
-                            // Start Test
-                            isTest1Active = true
-                            sessionLogger.startNewSession()
-                            decodedText = ""
-                            adaptiveThreshold.reset()
-                            shortCalibCount = 0
-                            longCalibCount = 0
-                            currentSymbols = ""
-                            updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isTest1Active) Color(0xFFD32F2F) else Color(0xFF1976D2)
-                    )
-                ) { Text(if (isTest1Active) "Cancel Test 1" else "Start Test 1", color = Color.White) }
-
-                IconButton(
-                    onClick = { showDataManagerBottomSheet(context) }
-                ) {
-                    Icon(
-                        painter = androidx.compose.ui.res.painterResource(id = R.drawable.ic_test_data),
-                        contentDescription = "Data Manager",
-                        tint = Color.White
-                    )
+    when (currentScreen) {
+        "intro" -> IntroPanelScreen(
+            shortCount = shortCalibCount,
+            longCount = longCalibCount,
+            currentBuffer = currentSymbols,
+            promptMessage = promptMessage,
+            isFlashing = isFlashing,
+            faceDetectedState = faceDetectedState,
+            cameraView = cameraViewComposable,
+            onNavigateToMain = { currentScreen = "main" }
+        )
+        "main" -> MainPanelScreen(
+            currentSymbols = currentSymbols,
+            decodedText = decodedText,
+            faceDetectedState = faceDetectedState,
+            isTest1Active = isTest1Active,
+            isFlashing = isFlashing,
+            cameraView = cameraViewComposable,
+            onTextChange = { newText -> decodedText = newText },
+            onNavigateToHelp = { currentScreen = "help" },
+            onNavigateToMenu = { currentScreen = "menu" }
+        )
+        "menu" -> MenuPanelScreen(
+            currentSymbols = currentSymbols,
+            isTest1Active = isTest1Active,
+            onClearClick = { decodedText = "" },
+            onSpeakClick = {
+                if (decodedText.isNotEmpty()) {
+                    tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
                 }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Caretaker Controls Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(
-                    onClick = { showCheatSheetBottomSheet(context) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                ) { Text("?", color = Color.White) }
-                
-                Button(
-                    onClick = { decodedText = "" },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                ) { Text("Clear", color = Color.White) }
-                
-                Button(
-                    onClick = {
-                        if (decodedText.isNotEmpty()) {
-                            tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.DarkGray)
-                ) { Text("Speak", color = Color.White) }
-                
-                Button(
-                    onClick = {
-                        isTest1Active = false
+            },
+            onTest1Click = {
+                if (isTest1Active) {
+                    isTest1Active = false
+                    if (adaptiveThreshold.hasValidCalibration()) {
+                        updateUIState(AppState.READY_TYPING, "Typing Mode")
+                    } else {
                         adaptiveThreshold.reset()
                         shortCalibCount = 0
                         longCalibCount = 0
                         currentSymbols = ""
                         updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
-                        decodedText = ""
-                        morseDecoder.clear()
-                    },
-                    enabled = !isTest1Active,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (!isTest1Active) Color.Red else Color(0x66D32F2F),
-                        disabledContainerColor = Color(0x66D32F2F),
-                        disabledContentColor = Color(0x99FFFFFF)
-                    )
-                ) { Text("Recalibrate", color = if (!isTest1Active) Color.White else Color(0x99FFFFFF)) }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Debug/Thesis Stats
-            Text(
-                text = thresholdInfo,
-                color = Color.Gray,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth()
-            )
-        }
+                    }
+                } else {
+                    isTest1Active = true
+                    sessionLogger.startNewSession()
+                    decodedText = ""
+                    adaptiveThreshold.reset()
+                    shortCalibCount = 0
+                    longCalibCount = 0
+                    currentSymbols = ""
+                    updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                }
+            },
+            onDataManagerClick = { showDataManagerBottomSheet(context) },
+            onRecalibrateClick = {
+                isTest1Active = false
+                adaptiveThreshold.reset()
+                shortCalibCount = 0
+                longCalibCount = 0
+                currentSymbols = ""
+                updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                decodedText = ""
+                morseDecoder.clear()
+                currentScreen = "intro"
+            },
+            onClose = { currentScreen = "main" }
+        )
+        "help" -> HelpPanelScreen(
+            currentSymbols = currentSymbols,
+            onClose = { currentScreen = "main" }
+        )
     }
 }
