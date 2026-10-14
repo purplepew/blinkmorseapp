@@ -73,7 +73,7 @@ fun CalibrationTask(label: String, progress: String, isChecked: Boolean, labelCo
                 }
             },
             fontSize = 11.sp,
-            lineHeight = 14.sp
+            lineHeight = 14.sp,
         )
     }
 }
@@ -404,6 +404,7 @@ fun DimmedTopHeader() {
     }
 }
 
+@Suppress("unused")
 @Composable
 fun ExcalidrawStyleTextBox(
     text: String,
@@ -440,6 +441,45 @@ fun ExcalidrawStyleTextBox(
     }
 }
 
+@Composable
+fun AutoScalingText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxFontSize: TextUnit = 32.sp,
+    minFontSize: TextUnit = 14.sp,
+    textColor: Color = Color(0xFFA5F3FC),
+) {
+    var currentFontSize by remember(text) { mutableStateOf(maxFontSize) }
+    var readyToDraw by remember(text) { mutableStateOf(value = false) }
+
+    Text(
+        text = text,
+        color = textColor,
+        fontSize = currentFontSize,
+        fontWeight = FontWeight.ExtraBold,
+        textAlign = TextAlign.Center,
+        letterSpacing = 1.5.sp,
+        lineHeight = (currentFontSize.value * 1.25f).sp,
+        softWrap = true,
+        overflow = TextOverflow.Clip,
+        modifier = modifier
+            .fillMaxWidth()
+            .drawWithContent {
+                if (readyToDraw) {
+                    drawContent()
+                }
+            },
+        onTextLayout = { textLayoutResult ->
+            if (textLayoutResult.hasVisualOverflow && (currentFontSize > minFontSize)) {
+                currentFontSize = (currentFontSize.value * 0.9f).sp
+            } else {
+                readyToDraw = true
+            }
+        }
+    )
+}
+
+@Suppress("unused")
 @Composable
 fun AutoScalingHolographicTextBox(
     text: String,

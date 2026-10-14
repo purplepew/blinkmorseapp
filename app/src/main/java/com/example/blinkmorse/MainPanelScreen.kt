@@ -50,7 +50,7 @@ fun MainPanelScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             // Left: Morse Reference Cheat Sheet Matrix
             Box(
@@ -202,11 +202,12 @@ fun MainPanelScreen(
                             lineHeight = 30.sp
                         )
                     } else {
-                        AutoScalingHolographicTextBox(
+                        AutoScalingText(
                             text = decodedText.ifEmpty { "START BLINKING..." },
+                            maxFontSize = 32.sp,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(150.dp)
+                                .padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
                 }
