@@ -27,7 +27,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Slate950)
+            .background(SolarBg)
             .windowInsetsPadding(WindowInsets.systemBars)
             .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -39,9 +39,9 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                 .fillMaxWidth()
                 .weight(1f)
                 .clip(RoundedCornerShape(24.dp))
-                .background(HudBg)
+                .background(SolarBg)
                 .drawCyberGrid()
-                .border(1.5.dp, HudCyan, RoundedCornerShape(24.dp))
+                .border(1.5.dp, SolarLine, RoundedCornerShape(24.dp))
                 .padding(12.dp)
         ) {
             Column(
@@ -54,8 +54,8 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                         .widthIn(min = 160.dp)
                         .height(36.dp)
                         .clip(CircleShape)
-                        .background(HudGreenDark)
-                        .border(1.5.dp, HudGreen, CircleShape)
+                        .background(SolarKeyBg)
+                        .border(1.5.dp, SolarLine, CircleShape)
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -72,15 +72,14 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF03140E))
-                        .drawCyberGrid(gridColor = Color(0x1200FF88))
-                        .border(2.dp, HudGreen, RoundedCornerShape(16.dp))
+                        .background(SolarKeyBg.copy(alpha = 0.9f))
+                        .border(2.dp, SolarLine, RoundedCornerShape(16.dp))
                         .padding(20.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
                         text = "CHEAT SHEET & COMMANDS",
-                        color = HudGreen,
+                        color = SolarInk,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
@@ -92,7 +91,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                             .fillMaxWidth()
                             .drawBehind {
                                 drawLine(
-                                    color = Color(0x80064E3B),
+                                    color = SolarLine.copy(alpha = 0.6f),
                                     start = Offset(0f, size.height),
                                     end = Offset(size.width, size.height),
                                     strokeWidth = 1.dp.toPx()
@@ -102,10 +101,10 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     ) {
                         Text(
                             text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(color = Color.White)) { append("SPACE (..--)") }
+                                withStyle(style = SpanStyle(color = SolarAccent)) { append("SPACE (..--)") }
                                 append(" - Insert space between words")
                             },
-                            color = Color(0xFF6EE7B7),
+                            color = SolarMuted,
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
@@ -119,7 +118,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                             .fillMaxWidth()
                             .drawBehind {
                                 drawLine(
-                                    color = Color(0x80064E3B),
+                                    color = SolarLine.copy(alpha = 0.6f),
                                     start = Offset(0f, size.height),
                                     end = Offset(size.width, size.height),
                                     strokeWidth = 1.dp.toPx()
@@ -129,10 +128,10 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     ) {
                         Text(
                             text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(color = Color.White)) { append("SPEAK (.-.-)") }
+                                withStyle(style = SpanStyle(color = SolarAccent)) { append("SPEAK (.-.-)") }
                                 append(" - Read text aloud & clear")
                             },
-                            color = Color(0xFF6EE7B7),
+                            color = SolarMuted,
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
@@ -146,7 +145,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                             .fillMaxWidth()
                             .drawBehind {
                                 drawLine(
-                                    color = Color(0x80064E3B),
+                                    color = SolarLine.copy(alpha = 0.6f),
                                     start = Offset(0f, size.height),
                                     end = Offset(size.width, size.height),
                                     strokeWidth = 1.dp.toPx()
@@ -156,10 +155,10 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     ) {
                         Text(
                             text = buildAnnotatedString {
-                                withStyle(style = SpanStyle(color = Color.White)) { append("BACKSPACE (....-)") }
+                                withStyle(style = SpanStyle(color = SolarAccent)) { append("BACKSPACE (....-)") }
                                 append(" - Delete last typed character")
                             },
-                            color = Color(0xFF6EE7B7),
+                            color = SolarMuted,
                             fontSize = 13.sp,
                             fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Bold
@@ -168,7 +167,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
 
                     Text(
                         text = "* Blink custom Morse abbreviation codes to execute instant speech & controls.",
-                        color = Color(0x9934D399),
+                        color = SolarMuted.copy(alpha = 0.8f),
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.padding(top = 16.dp)
@@ -185,14 +184,14 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF2B0813))
-                            .border(1.dp, HudRed, RoundedCornerShape(12.dp))
+                            .background(SolarKeyBg)
+                            .border(1.dp, SolarAccent, RoundedCornerShape(12.dp))
                             .clickable { onClose() }
                             .padding(horizontal = 24.dp, vertical = 8.dp)
                     ) {
                         Text(
-                            text = "close",
-                            color = Color(0xFFFCA5A5),
+                            text = "CLOSE",
+                            color = SolarAccent,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
