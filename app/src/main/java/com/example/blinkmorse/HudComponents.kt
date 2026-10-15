@@ -56,34 +56,40 @@ val HudMenuBoxBg = Color(0xF205152A)
 val HudMenuBtnBg = Color(0xFF071D37)
 
 @Composable
-fun CalibrationTask(label: String, progress: String, isChecked: Boolean, labelColor: Color) {
+fun CalibrationTask(label: String, progress: String, isChecked: Boolean) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Checkbox(
             checked = isChecked,
             onCheckedChange = null,
             colors = CheckboxDefaults.colors(
-                checkedColor = SolarInk,
+                checkedColor = SolarAccent,
                 checkmarkColor = SolarBg,
-                uncheckedColor = SolarInk,
+                uncheckedColor = SolarMuted,
             ),
             modifier = Modifier
-                .size(16.dp)
-                .border(1.dp, SolarLine, RoundedCornerShape(4.dp)),
+                .size(18.dp)
+                .border(1.dp, if (isChecked) SolarAccent else SolarMuted, RoundedCornerShape(4.dp)),
         )
         Text(
             text = buildAnnotatedString {
-                withStyle(style = SpanStyle(color = labelColor, fontWeight = FontWeight.SemiBold)) {
+                withStyle(style = SpanStyle(color = SolarInk, fontWeight = FontWeight.Bold)) {
                     append("$label ")
                 }
-                withStyle(style = SpanStyle(color = SolarLine, fontFamily = FontFamily.Monospace)) {
+                withStyle(
+                    style = SpanStyle(
+                        color = if (isChecked) SolarAccent else SolarMuted,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                ) {
                     append(progress)
                 }
             },
-            fontSize = 11.sp,
-            lineHeight = 14.sp,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
         )
     }
 }

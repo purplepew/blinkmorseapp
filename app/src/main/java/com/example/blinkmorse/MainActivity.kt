@@ -477,6 +477,32 @@ fun BlinkMorseUI() {
                             currentScreen = "help"
                             Log.d("BlinkMorse", "HELP opened via Morse command.")
                         }
+                        "<TEST1>" -> {
+                            if (isTest1Active) {
+                                isTest1Active = false
+                                if (adaptiveThreshold.hasValidCalibration()) {
+                                    updateUIState(AppState.READY_TYPING, "Typing Mode")
+                                } else {
+                                    adaptiveThreshold.reset()
+                                    shortCalibCount = 0
+                                    longCalibCount = 0
+                                    currentSymbols = ""
+                                    updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                                }
+                            } else {
+                                isTest1Active = true
+                                sessionLogger.startNewSession()
+                                decodedText = ""
+                                adaptiveThreshold.reset()
+                                shortCalibCount = 0
+                                longCalibCount = 0
+                                currentSymbols = ""
+                                updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                            }
+                        }
+                        "<DATALOGS>" -> {
+                            showDataManagerBottomSheet(context)
+                        }
                         else -> {
                             decodedText += decodedChar
                         }
@@ -488,7 +514,7 @@ fun BlinkMorseUI() {
                         when (decodedChar) {
                             "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
                             "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
-                            "<MENU>", "<HELP>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
+                            "<MENU>", "<HELP>", "<TEST1>", "<DATALOGS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
                             else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                         }
                     }

@@ -114,20 +114,18 @@ fun IntroPanelScreen(
                     .padding(12.dp)
             ) {
                 Column(
-                    verticalArrangement = Arrangement.SpaceAround,
-                    modifier = Modifier.fillMaxHeight()
+                    verticalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxHeight(),
                 ) {
                     CalibrationTask(
                         label = "10 short blinks",
                         progress = "($shortCount/10)",
                         isChecked = shortCount >= 10,
-                        labelColor = SolarInk
                     )
                     CalibrationTask(
                         label = "10 long blinks",
                         progress = "($longCount/10)",
                         isChecked = longCount >= 10,
-                        labelColor = SolarInk
                     )
                 }
             }

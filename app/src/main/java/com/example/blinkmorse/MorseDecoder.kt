@@ -30,7 +30,9 @@ class MorseDecoder(
             "..--" to " ",       // Custom dedicated space command
             "....-" to "<BS>",   // Custom backspace (delete last character) - overrides '4'
             ".-.-" to "<SPEAK>", // Custom Speak & Clear command
-            "..-.." to "<HELP>"  // Custom Help command (overrides '?')
+            "..-.." to "<HELP>",  // Custom Help command (overrides '?')
+            ".--.-." to "<TEST1>", // Custom Start/Cancel Test 1 command
+            ".-...-" to "<DATALOGS>" // Custom Data Logs command
         )
     }
 
@@ -43,7 +45,7 @@ class MorseDecoder(
         currentSymbols += symbol
 
         // INSTANT ABORT CHECK (Disabled in Strict Evaluation Mode)
-        if (!isStrictMode && currentSymbols.length >= 6) {
+        if (!isStrictMode && (currentSymbols.length >= 7)) {
             timeoutJob?.cancel()
             currentSymbols = ""
             notifySymbolUpdated()
