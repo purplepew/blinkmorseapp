@@ -762,9 +762,7 @@ fun BlinkMorseUI() {
             decodedText = decodedText,
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
-            isFlashing = isFlashing,
             cameraView = cameraViewComposable,
-            onTextChange = { newText -> decodedText = newText },
             onNavigateToHelp = { currentScreen = "help" },
             onNavigateToMenu = { currentScreen = "menu" }
         )

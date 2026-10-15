@@ -30,7 +30,17 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// --- Theme & Colors ---
+// --- Theme & Colors (Solar Arcade) ---
+val SolarBg = Color(0xFFF5E8CB)
+val SolarInk = Color(0xFF3A2419)
+val SolarMuted = Color(0xFF8E6B4C)
+val SolarLine = Color(0xFFD5BB94)
+val SolarKeyBg = Color(0x73FFFFFF) // ~45% white for translucent surfaces
+val SolarDisplayBg = Color(0xFFF1D7A5)
+val SolarAccent = Color(0xFFE85C37) // Orange-red (Active/Dash)
+val SolarAccent2 = Color(0xFFEFA832) // Golden-yellow (Dot)
+
+// --- Legacy Themes (Pending Migration) ---
 val HudBg = Color(0xFF030A16)
 val HudCardBg = Color(0xCC061426)
 val HudAvatarBg = Color(0xFF081B30)
@@ -55,20 +65,20 @@ fun CalibrationTask(label: String, progress: String, isChecked: Boolean, labelCo
             checked = isChecked,
             onCheckedChange = null,
             colors = CheckboxDefaults.colors(
-                checkedColor = Slate950,
-                checkmarkColor = HudCyan,
-                uncheckedColor = Slate950,
+                checkedColor = SolarInk,
+                checkmarkColor = SolarBg,
+                uncheckedColor = SolarInk,
             ),
             modifier = Modifier
                 .size(16.dp)
-                .border(1.dp, HudCyan, RoundedCornerShape(4.dp)),
+                .border(1.dp, SolarLine, RoundedCornerShape(4.dp)),
         )
         Text(
             text = buildAnnotatedString {
                 withStyle(style = SpanStyle(color = labelColor, fontWeight = FontWeight.SemiBold)) {
                     append("$label ")
                 }
-                withStyle(style = SpanStyle(color = HudCyan, fontFamily = FontFamily.Monospace)) {
+                withStyle(style = SpanStyle(color = SolarLine, fontFamily = FontFamily.Monospace)) {
                     append(progress)
                 }
             },
@@ -127,8 +137,8 @@ fun SimulatedAvatarSvg() {
     }
 }
 
-fun Modifier.drawCyberGrid(gridColor: Color = Color(0x1400B4FF)) = this.drawBehind {
-    val gridSize = 24.dp.toPx()
+fun Modifier.drawCyberGrid(gridColor: Color = SolarLine.copy(alpha = 0.5f)) = this.drawBehind {
+    val gridSize = 32.dp.toPx() // Slightly wider grid spacing for blueprint feel
     
     var x = 0f
     while (x < size.width) {
@@ -164,8 +174,8 @@ fun CornerAccents(color: Color, length: Float, strokeWidth: Float, offset: Float
 @Composable
 fun MorseVisualizer(
     morseCode: String, 
-    dotColor: Color = HudCyan,
-    dashColor: Color = HudGreen,
+    dotColor: Color = SolarAccent2,
+    dashColor: Color = SolarAccent,
 ) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.5.dp),
@@ -175,16 +185,16 @@ fun MorseVisualizer(
             if (char == '.') {
                 Box(
                     modifier = Modifier
-                        .size(5.dp) 
+                        .size(6.dp) 
                         .clip(CircleShape)
                         .background(dotColor),
                 )
             } else if (char == '-') {
                 Box(
                     modifier = Modifier
-                        .width(12.dp) 
-                        .height(5.dp)
-                        .clip(CircleShape)
+                        .width(14.dp) 
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
                         .background(dashColor),
                 )
             }
@@ -196,29 +206,30 @@ fun MorseVisualizer(
 fun LargeMorseVisualizer(
     morseCode: String,
     modifier: Modifier = Modifier,
-    activeColor: Color = Color(0xFF6EE7B7),
+    dotColor: Color = SolarAccent2,
+    dashColor: Color = SolarAccent,
     maxSymbols: Int = 10
 ) {
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically
     ) {
         morseCode.take(maxSymbols).forEach { char ->
             if (char == '.') {
                 Box(
                     modifier = Modifier
-                        .size(10.dp)
+                        .size(12.dp)
                         .clip(CircleShape)
-                        .background(activeColor)
+                        .background(dotColor)
                 )
             } else if (char == '-') {
                 Box(
                     modifier = Modifier
-                        .width(24.dp)
-                        .height(10.dp)
-                        .clip(CircleShape)
-                        .background(activeColor)
+                        .width(28.dp)
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(dashColor)
                 )
             }
         }
@@ -248,24 +259,25 @@ fun MorseCheatSheetGrid() {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0x26061426))
-                            .border(1.dp, Color(0x3300E5FF), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 4.dp),
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SolarKeyBg)
+                            .border(1.5.dp, SolarLine, RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
+                        Column(
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = letter,
-                                color = Color(0xFF67E8F9), 
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                color = SolarInk, 
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
                             )
+                            Spacer(modifier = Modifier.height(2.dp))
                             MorseVisualizer(morseCode = morse)
                         }
                     }
@@ -279,22 +291,16 @@ fun MorseCheatSheetGrid() {
             }
         }
         
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 3.dp)
-                .height(1.dp)
-                .background(Color(0xFF0F3746))
-        )
+        Spacer(modifier = Modifier.height(8.dp))
         
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SpecialSignal("SPEAK:", ".-.-", modifier = Modifier.weight(1f))
-            SpecialSignal("SPACE:", "..--", modifier = Modifier.weight(1f))
-            SpecialSignal("CLEAR:", "....-", modifier = Modifier.weight(1f))
+            SpecialSignal("SPEAK", ".-.-", modifier = Modifier.weight(1f))
+            SpecialSignal("SPACE", "..--", modifier = Modifier.weight(1f))
+            SpecialSignal("CLEAR", "....-", modifier = Modifier.weight(1f))
         }
     }
 }
@@ -303,24 +309,25 @@ fun MorseCheatSheetGrid() {
 fun SpecialSignal(label: String, morse: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color(0x26061426))
-            .border(1.dp, Color(0x3300E5FF), RoundedCornerShape(6.dp))
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .background(SolarKeyBg)
+            .border(1.5.dp, SolarLine, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(
                 text = label, 
-                color = Color(0xFFA5F3FC),
-                fontSize = 8.5.sp,
+                color = SolarInk,
+                fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 fontFamily = FontFamily.Monospace,
             )
+            Spacer(modifier = Modifier.height(2.dp))
             MorseVisualizer(morseCode = morse) 
         }
     }
@@ -390,8 +397,8 @@ fun DimmedTopHeader() {
                 .weight(0.66f)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(16.dp))
-                .background(HudCardBg)
-                .border(1.5.dp, HudCyan, RoundedCornerShape(16.dp))
+                .background(SolarKeyBg)
+                .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
                 .padding(12.dp)
         ) {
             MorseCheatSheetGrid()
@@ -402,8 +409,8 @@ fun DimmedTopHeader() {
                 .weight(0.34f)
                 .height(130.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(HudAvatarBg)
-                .border(2.dp, HudCyan.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                .background(SolarDisplayBg)
+                .border(2.dp, SolarLine.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
         )
     }
 }
@@ -414,9 +421,9 @@ fun ExcalidrawStyleTextBox(
     text: String,
     modifier: Modifier = Modifier,
     minHeight: Dp = 120.dp,
-    textColor: Color = Color(0xFFA5F3FC),
-    borderColor: Color = HudCyan,
-    backgroundColor: Color = HudCardBg,
+    textColor: Color = SolarInk,
+    borderColor: Color = SolarLine,
+    backgroundColor: Color = SolarKeyBg,
 ) {
     Box(
         modifier = modifier
@@ -450,10 +457,10 @@ fun AutoScalingText(
     modifier: Modifier = Modifier,
     maxFontSize: TextUnit = 32.sp,
     minFontSize: TextUnit = 14.sp,
-    textColor: Color = Color(0xFFA5F3FC),
+    textColor: Color = SolarInk,
 ) {
     var currentFontSize by remember(text) { mutableStateOf(maxFontSize) }
-    var readyToDraw by remember(text) { mutableStateOf(value = false) }
+    var readyToDraw by remember(text) { mutableStateOf(false) }
 
     Text(
         text = text,
@@ -488,9 +495,9 @@ fun AutoScalingHolographicTextBox(
     modifier: Modifier = Modifier,
     maxFontSize: TextUnit = 32.sp,
     minFontSize: TextUnit = 12.sp,
-    textColor: Color = Color(0xFFA5F3FC),
-    borderColor: Color = HudCyan,
-    backgroundColor: Color = HudCardBg,
+    textColor: Color = SolarInk,
+    borderColor: Color = SolarLine,
+    backgroundColor: Color = SolarDisplayBg,
 ) {
     var currentFontSize by remember(text) { mutableStateOf(maxFontSize) }
 
