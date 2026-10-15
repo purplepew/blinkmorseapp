@@ -395,6 +395,8 @@ fun BlinkMorseUI() {
         textToSpeech = TextToSpeech(context) { status ->
             if (status == TextToSpeech.SUCCESS) {
                 textToSpeech?.language = Locale.US
+                textToSpeech?.setSpeechRate(0.80f) // Slower, highly articulate & clear speech rate
+                textToSpeech?.setPitch(0.95f)       // Natural, calm, warm vocal pitch
             }
         }
         tts = textToSpeech
@@ -468,10 +470,12 @@ fun BlinkMorseUI() {
                             }
                         }
                         "<SPEAK>" -> {
-                            if (decodedText.isNotEmpty()) {
-                                tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
-                                decodedText = ""
-                            }
+                            val textToSay = decodedText.ifEmpty { "No text to speak" }
+                            tts?.speak(textToSay, TextToSpeech.QUEUE_FLUSH, null, "BlinkMorseTTS")
+                        }
+                        "<CLEAR>" -> {
+                            decodedText = ""
+                            Log.d("BlinkMorse", "CLEAR executed. Board reset.")
                         }
                         "<MENU>" -> {
                             currentScreen = "menu"
@@ -862,9 +866,8 @@ fun BlinkMorseUI() {
             currentFps = currentFps,
             onClearClick = { decodedText = "" },
             onSpeakClick = {
-                if (decodedText.isNotEmpty()) {
-                    tts?.speak(decodedText, TextToSpeech.QUEUE_FLUSH, null, null)
-                }
+                val textToSay = decodedText.ifEmpty { "No text to speak" }
+                tts?.speak(textToSay, TextToSpeech.QUEUE_FLUSH, null, "BlinkMorseTTS")
             },
             onTest1Click = {
                 if (isTest1Active) {

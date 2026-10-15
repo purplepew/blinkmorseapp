@@ -28,7 +28,9 @@ class MorseDecoder(
             "---.." to "<MENU>", // Custom Menu command (overrides '8')
             "----." to "9",
             "..--" to " ",          // Custom dedicated space command
-            "....-" to "<BS>",      // Custom backspace / clear - overrides '4'
+            "....-" to "<BS>",      // Custom backspace - overrides '4'
+            ".-.-" to "<SPEAK>",    // Custom Speak command
+            "...---" to "<CLEAR>",  // Custom Clear All Board command
             "..-.." to "<HELP>",     // Custom Help command (overrides '?')
             ".--.-." to "<TEST1>",    // Custom Start/Cancel Test 1 command
             ".-...-" to "<DATALOGS>", // Custom Data Logs command

@@ -301,12 +301,13 @@ fun MorseCheatSheetGrid() {
         
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SpecialSignal("SPEAK", ".-.-", modifier = Modifier.weight(1f))
             SpecialSignal("SPACE", "..--", modifier = Modifier.weight(1f))
-            SpecialSignal("CLEAR", "....-", modifier = Modifier.weight(1f))
+            SpecialSignal("BS", "....-", modifier = Modifier.weight(1f))
+            SpecialSignal("CLEAR", "...---", modifier = Modifier.weight(1f))
         }
     }
 }
