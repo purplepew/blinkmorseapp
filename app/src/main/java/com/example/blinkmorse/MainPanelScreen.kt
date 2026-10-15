@@ -30,6 +30,8 @@ fun MainPanelScreen(
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
     thresholdInfo: String = "",
+    keypadMode: KeypadMode = KeypadMode.ABC,
+    onModeChange: (KeypadMode) -> Unit = {},
     cameraView: @Composable () -> Unit = {},
     onNavigateToHelp: () -> Unit,
     onNavigateToMenu: () -> Unit,
@@ -195,7 +197,7 @@ fun MainPanelScreen(
                 .fillMaxWidth()
                 .weight(0.55f),
         ) {
-            MorseCheatSheetGrid()
+            MorseCheatSheetGrid(selectedMode = keypadMode, onModeChange = onModeChange)
         }
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,6 +43,25 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
+                // Top Morse Indicator (capacity for 6 symbols)
+                Box(
+                    modifier = Modifier
+                        .widthIn(min = 160.dp)
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .background(SolarKeyBg)
+                        .border(1.5.dp, SolarLine, CircleShape)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    LargeMorseVisualizer(
+                        morseCode = currentSymbols,
+                        maxSymbols = 6,
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Quick Assist Frame
                 Column(
                     modifier = Modifier
@@ -91,12 +111,6 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                         morse = "-...-",
                         description = "Speak current battery & time",
                     )
-                    ActionCommandItem(
-                        icon = "🧹",
-                        name = "Clear Board",
-                        morse = "....-",
-                        description = "Erase all typed text from screen",
-                    )
 
                     Text(
                         text = "* Blink custom action Morse codes to execute instant controls.",
@@ -120,14 +134,20 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                             .background(SolarKeyBg)
                             .border(1.dp, SolarAccent, RoundedCornerShape(12.dp))
                             .clickable { onClose() }
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Text(
-                            text = "CLOSE",
-                            color = SolarAccent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = "CLOSE",
+                                color = SolarAccent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            MorseVisualizer(morseCode = "..-.-", dotColor = SolarAccent2, dashColor = SolarAccent)
+                        }
                     }
                 }
             }

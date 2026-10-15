@@ -371,6 +371,7 @@ fun BlinkMorseUI() {
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
     var currentFps by remember { mutableIntStateOf(0) }
+    var keypadMode by remember { mutableStateOf(KeypadMode.ABC) }
     
     // Camera & Flashlight State
     var boundCamera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
@@ -551,6 +552,16 @@ fun BlinkMorseUI() {
                             val statusMsg = if (batteryLevel >= 0) "Battery $batteryLevel percent, time is $timeStr" else "Time is $timeStr"
                             tts?.speak(statusMsg, TextToSpeech.QUEUE_FLUSH, null, null)
                         }
+                        "<TOGGLE_KEYPAD>" -> {
+                            keypadMode = if (keypadMode == KeypadMode.ABC) KeypadMode.NUMBERS else KeypadMode.ABC
+                            Log.d("BlinkMorse", "Keypad mode toggled via Morse command to: $keypadMode")
+                        }
+                        "<CLOSE>" -> {
+                            if (currentScreen == "menu" || currentScreen == "help") {
+                                currentScreen = "main"
+                                Log.d("BlinkMorse", "Modal closed via Morse command.")
+                            }
+                        }
                         else -> {
                             decodedText += decodedChar
                         }
@@ -562,7 +573,7 @@ fun BlinkMorseUI() {
                         when (decodedChar) {
                             "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
                             "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
-                            "<MENU>", "<HELP>", "<TEST1>", "<DATALOGS>", "<FLASHLIGHT>", "<QUICK_SOS>", "<STATUS>" -> 
+                            "<MENU>", "<HELP>", "<CLOSE>", "<TEST1>", "<DATALOGS>", "<FLASHLIGHT>", "<QUICK_SOS>", "<STATUS>", "<TOGGLE_KEYPAD>" -> 
                                 toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
                             else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                         }
@@ -850,6 +861,8 @@ fun BlinkMorseUI() {
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
             thresholdInfo = thresholdInfo,
+            keypadMode = keypadMode,
+            onModeChange = { keypadMode = it },
             cameraView = cameraViewComposable,
             onNavigateToHelp = { currentScreen = "help" },
             onNavigateToMenu = { currentScreen = "menu" }

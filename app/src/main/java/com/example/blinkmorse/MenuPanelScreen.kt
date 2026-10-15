@@ -201,14 +201,20 @@ fun MenuPanelScreen(
                             .background(SolarKeyBg)
                             .border(1.dp, SolarAccent, RoundedCornerShape(12.dp))
                             .clickable { onClose() }
-                            .padding(horizontal = 24.dp, vertical = 8.dp),
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     ) {
-                        Text(
-                            text = "CLOSE",
-                            color = SolarAccent,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            Text(
+                                text = "CLOSE",
+                                color = SolarAccent,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            MorseVisualizer(morseCode = "..-.-", dotColor = SolarAccent2, dashColor = SolarAccent)
+                        }
                     }
                 }
             }

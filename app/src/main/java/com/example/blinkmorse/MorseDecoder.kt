@@ -24,11 +24,11 @@ class MorseDecoder(
             "..-" to "U", "...-" to "V", ".--" to "W", "-..-" to "X", "-.--" to "Y",
             "--.." to "Z",
             "-----" to "0", ".----" to "1", "..---" to "2", "...--" to "3",
-            "....." to "5", "-...." to "6", "--..." to "7",
-            "---.." to "<MENU>", // Custom Menu command (overrides '8')
-            "----." to "9",
+            "....-" to "4", "....." to "5", "-...." to "6", "--..." to "7",
+            "---.." to "8", "----." to "9",
+            "---.-" to "<MENU>",    // Custom Menu command
             "..--" to " ",          // Custom dedicated space command
-            "....-" to "<BS>",      // Custom backspace - overrides '4'
+            "...-." to "<BS>",      // Custom backspace command
             ".-.-" to "<SPEAK>",    // Custom Speak command
             "...---" to "<CLEAR>",  // Custom Clear All Board command
             "..-.." to "<HELP>",     // Custom Help command (overrides '?')
@@ -38,7 +38,9 @@ class MorseDecoder(
             "----.." to "<MUSIC>",   // Custom Music Playlist command
             ".-.-.-" to "<FLASHLIGHT>", // Custom Flashlight command
             "-.-.-" to "<QUICK_SOS>", // Custom Quick SOS Message command
-            "-...-" to "<STATUS>"    // Custom Battery & Time Status command
+            "-...-" to "<STATUS>",   // Custom Battery & Time Status command
+            ".-.-." to "<TOGGLE_KEYPAD>", // Custom Hands-Free Keypad Mode Toggle command
+            "..-.-" to "<CLOSE>"     // Custom Close Modal command
         )
     }
 

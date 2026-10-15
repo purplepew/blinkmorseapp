@@ -3,6 +3,7 @@ package com.example.blinkmorse
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -183,24 +184,30 @@ fun MorseVisualizer(
     dotColor: Color = SolarAccent2,
     dashColor: Color = SolarAccent,
 ) {
+    val scaleRatio = if (morseCode.length >= 5) 0.65f else 1f
+    val dotSize = (6.dp * scaleRatio)
+    val dashWidth = (14.dp * scaleRatio)
+    val dashHeight = (6.dp * scaleRatio)
+    val gap = (2.5.dp * scaleRatio)
+
     Row(
-        horizontalArrangement = Arrangement.spacedBy(2.5.dp),
+        horizontalArrangement = Arrangement.spacedBy(gap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         morseCode.forEach { char ->
             if (char == '.') {
                 Box(
                     modifier = Modifier
-                        .size(6.dp) 
+                        .size(dotSize) 
                         .clip(CircleShape)
                         .background(dotColor),
                 )
             } else if (char == '-') {
                 Box(
                     modifier = Modifier
-                        .width(14.dp) 
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(3.dp))
+                        .width(dashWidth) 
+                        .height(dashHeight)
+                        .clip(RoundedCornerShape(dashHeight / 2))
                         .background(dashColor),
                 )
             }
@@ -242,9 +249,14 @@ fun LargeMorseVisualizer(
     }
 }
 
+enum class KeypadMode { ABC, NUMBERS }
+
 @Composable
-fun MorseCheatSheetGrid() {
-    val morseMap = listOf(
+fun MorseCheatSheetGrid(
+    selectedMode: KeypadMode = KeypadMode.ABC,
+    onModeChange: (KeypadMode) -> Unit = {}
+) {
+    val alphabetMap = listOf(
         "A" to ".-", "B" to "-...", "C" to "-.-.", "D" to "-..", "E" to ".", "F" to "..-.",
         "G" to "--.", "H" to "....", "I" to "..", "J" to ".---", "K" to "-.-", "L" to ".-..",
         "M" to "--", "N" to "-.", "O" to "---", "P" to ".--.", "Q" to "--.-", "R" to ".-.",
@@ -252,23 +264,84 @@ fun MorseCheatSheetGrid() {
         "Y" to "-.--", "Z" to "--.."
     )
 
+    val numbersMap = listOf(
+        "1" to ".----", "2" to "..---", "3" to "...--", "4" to "....-", "5" to ".....",
+        "6" to "-....", "7" to "--...", "8" to "---..", "9" to "----.", "0" to "-----"
+    )
+
+    val currentMap = if (selectedMode == KeypadMode.ABC) alphabetMap else numbersMap
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        morseMap.chunked(5).forEach { rowItems ->
+        // Keypad Mode Switcher Bar (ABC / 123) + Hands-Free Morse Visualizer
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 2.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SolarKeyBg)
+                    .border(1.dp, SolarLine, RoundedCornerShape(12.dp))
+                    .padding(2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedMode == KeypadMode.ABC) SolarAccent else Color.Transparent)
+                        .clickable { onModeChange(KeypadMode.ABC) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "ABC",
+                        color = if (selectedMode == KeypadMode.ABC) SolarBg else SolarMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (selectedMode == KeypadMode.NUMBERS) SolarAccent else Color.Transparent)
+                        .clickable { onModeChange(KeypadMode.NUMBERS) }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "123",
+                        color = if (selectedMode == KeypadMode.NUMBERS) SolarBg else SolarMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                }
+                Spacer(modifier = Modifier.width(6.dp))
+                MorseVisualizer(morseCode = ".-.-.", dotColor = SolarAccent2, dashColor = SolarAccent)
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+        }
+
+        currentMap.chunked(5).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                rowItems.forEach { (letter, morse) ->
+                rowItems.forEach { (symbol, morse) ->
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(8.dp))
                             .background(SolarKeyBg)
                             .border(1.5.dp, SolarLine, RoundedCornerShape(8.dp))
-                            .padding(horizontal = 8.dp, vertical = 8.dp),
+                            .padding(horizontal = 4.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(
@@ -277,7 +350,7 @@ fun MorseCheatSheetGrid() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                text = letter,
+                                text = symbol,
                                 color = SolarInk, 
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
@@ -297,7 +370,7 @@ fun MorseCheatSheetGrid() {
             }
         }
         
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -306,7 +379,7 @@ fun MorseCheatSheetGrid() {
         ) {
             SpecialSignal("SPEAK", ".-.-", modifier = Modifier.weight(1f))
             SpecialSignal("SPACE", "..--", modifier = Modifier.weight(1f))
-            SpecialSignal("BS", "....-", modifier = Modifier.weight(1f))
+            SpecialSignal("BS", "...-.", modifier = Modifier.weight(1f))
             SpecialSignal("CLEAR", "...---", modifier = Modifier.weight(1f))
         }
     }
