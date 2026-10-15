@@ -358,16 +358,40 @@ fun BlinkMorseUI() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
 
-    var currentScreen by rememberSaveable { mutableStateOf("intro") }
-    var appState by remember { mutableStateOf(AppState.CALIBRATING_SHORT) }
-    var promptMessage by remember { mutableStateOf("Perform 10 short blinks (dots) [0/10]") }
+    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
+    val blinkDetector = remember { BlinkDetector() }
+    val adaptiveThreshold = remember { AdaptiveThreshold() }
+    val sessionLogger = remember { SessionLogger() }
+    
+    val sharedPrefs = context.getSharedPreferences("blinkmorse_prefs", Context.MODE_PRIVATE)
+    val hasCalibration = remember { adaptiveThreshold.loadFromPreferences(sharedPrefs) }
+    
+    var hasSavedCalibration by remember { mutableStateOf(hasCalibration) }
+    var currentScreen by rememberSaveable { mutableStateOf(if (hasCalibration) "main" else "intro") }
+    var appState by remember { mutableStateOf(if (hasCalibration) AppState.READY_TYPING else AppState.CALIBRATING_SHORT) }
+    var promptMessage by remember { mutableStateOf(if (hasCalibration) "Typing Mode" else "Perform 10 short blinks (dots) [0/10]") }
 
-    var shortCalibCount by remember { mutableIntStateOf(0) }
-    var longCalibCount by remember { mutableIntStateOf(0) }
+    var shortCalibCount by remember { mutableIntStateOf(if (hasCalibration) 10 else 0) }
+    var longCalibCount by remember { mutableIntStateOf(if (hasCalibration) 10 else 0) }
+    var consecutiveLongBlinks by remember { mutableIntStateOf(0) }
 
     var currentSymbols by remember { mutableStateOf("") }
     var decodedText by remember { mutableStateOf("") }
-    var thresholdInfo by remember { mutableStateOf("Threshold: --- | Short: --- | Long: ---") }
+    var thresholdInfo by remember {
+        mutableStateOf(
+            if (hasCalibration) {
+                String.format(
+                    Locale.US,
+                    "Threshold: %.0f ms | Short: %.0f ms | Long: %.0f ms",
+                    adaptiveThreshold.threshold,
+                    adaptiveThreshold.shortCenter,
+                    adaptiveThreshold.longCenter
+                )
+            } else {
+                "Threshold: --- | Short: --- | Long: ---"
+            }
+        )
+    }
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
     var currentFps by remember { mutableIntStateOf(0) }
@@ -379,14 +403,6 @@ fun BlinkMorseUI() {
     
     // UI Animation State
     var isFlashing by remember { mutableStateOf(false) }
-
-    val cameraExecutor = remember { Executors.newSingleThreadExecutor() }
-    val blinkDetector = remember { BlinkDetector() }
-    val adaptiveThreshold = remember { AdaptiveThreshold() }
-    val sessionLogger = remember { SessionLogger() }
-    
-    val sharedPrefs = context.getSharedPreferences("blinkmorse_prefs", Context.MODE_PRIVATE)
-    var hasSavedCalibration by remember { mutableStateOf(adaptiveThreshold.hasSavedCalibration(sharedPrefs)) }
     
     val toneGenerator = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 100) }
 
@@ -924,10 +940,13 @@ fun BlinkMorseUI() {
             onDataManagerClick = { showDataManagerBottomSheet(context) },
             onRecalibrateClick = {
                 isTest1Active = false
+                sharedPrefs.edit().clear().apply()
+                hasSavedCalibration = false
                 adaptiveThreshold.reset()
                 shortCalibCount = 0
                 longCalibCount = 0
                 currentSymbols = ""
+                thresholdInfo = "Threshold: --- | Short: --- | Long: ---"
                 updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
                 decodedText = ""
                 morseDecoder.clear()

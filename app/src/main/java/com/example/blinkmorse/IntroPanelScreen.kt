@@ -30,7 +30,7 @@ fun IntroPanelScreen(
     faceDetectedState: Boolean? = null,
     cameraView: (@Composable () -> Unit)? = null,
     canSkip: Boolean = false,
-    onNavigateToMain: () -> Unit,
+    onNavigateToMain: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier
@@ -196,54 +196,6 @@ fun IntroPanelScreen(
                         Box(modifier = Modifier.width(48.dp).height(1.dp).background(SolarLine))
                         Spacer(modifier = Modifier.width(4.dp))
                         Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(SolarLine))
-                    }
-                }
-
-                // Bottom Action CTA
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    val isComplete = (shortCount >= 10) && (longCount >= 10)
-                    if (isComplete || canSkip) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isComplete) SolarAccent.copy(alpha = 0.2f) else SolarKeyBg)
-                                .border(
-                                    1.5.dp,
-                                    if (isComplete) SolarAccent else SolarLine.copy(alpha = 0.8f),
-                                    RoundedCornerShape(12.dp),
-                                )
-                                .clickable { onNavigateToMain() }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                text = if (isComplete) "PROCEED TO MAIN →" else "SKIP TO MAIN →",
-                                color = if (isComplete) SolarAccent else SolarInk,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
-                    } else {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(SolarKeyBg.copy(alpha = 0.5f))
-                                .border(
-                                    1.dp,
-                                    SolarLine.copy(alpha = 0.4f),
-                                    RoundedCornerShape(12.dp),
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            Text(
-                                text = "COMPLETE CALIBRATION",
-                                color = SolarMuted.copy(alpha = 0.8f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
                     }
                 }
             }
