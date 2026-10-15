@@ -385,33 +385,16 @@ fun ActiveAvatarSvg() {
 
 @Composable
 fun DimmedTopHeader() {
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .alpha(0.2f),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+            .alpha(0.2f)
+            .clip(RoundedCornerShape(16.dp))
+            .background(SolarKeyBg)
+            .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
+            .padding(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .weight(0.66f)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(16.dp))
-                .background(SolarKeyBg)
-                .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
-                .padding(12.dp)
-        ) {
-            MorseCheatSheetGrid()
-        }
-
-        Box(
-            modifier = Modifier
-                .weight(0.34f)
-                .height(130.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(SolarDisplayBg)
-                .border(2.dp, SolarLine.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
-        )
+        MorseCheatSheetGrid()
     }
 }
 
