@@ -358,6 +358,7 @@ fun BlinkMorseUI() {
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
 
+    var currentScreen by rememberSaveable { mutableStateOf("intro") }
     var appState by remember { mutableStateOf(AppState.CALIBRATING_SHORT) }
     var promptMessage by remember { mutableStateOf("Perform 10 short blinks (dots) [0/10]") }
 
@@ -468,6 +469,14 @@ fun BlinkMorseUI() {
                                 decodedText = ""
                             }
                         }
+                        "<MENU>" -> {
+                            currentScreen = "menu"
+                            Log.d("BlinkMorse", "MENU opened via Morse command.")
+                        }
+                        "<HELP>" -> {
+                            currentScreen = "help"
+                            Log.d("BlinkMorse", "HELP opened via Morse command.")
+                        }
                         else -> {
                             decodedText += decodedChar
                         }
@@ -479,6 +488,7 @@ fun BlinkMorseUI() {
                         when (decodedChar) {
                             "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
                             "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
+                            "<MENU>", "<HELP>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
                             else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                         }
                     }
@@ -659,8 +669,6 @@ fun BlinkMorseUI() {
         }
     }
 
-    var currentScreen by rememberSaveable { mutableStateOf("intro") }
-
     val cameraViewComposable: @Composable () -> Unit = {
         AndroidView(
             modifier = Modifier.fillMaxSize(),
@@ -733,8 +741,8 @@ fun BlinkMorseUI() {
         }
     }
 
-    when (currentScreen) {
-        "intro" -> IntroPanelScreen(
+    if (currentScreen == "intro") {
+        IntroPanelScreen(
             shortCount = shortCalibCount,
             longCount = longCalibCount,
             currentBuffer = currentSymbols,
@@ -757,18 +765,30 @@ fun BlinkMorseUI() {
                 }
             }
         )
-        "main" -> MainPanelScreen(
+    }
+    
+    // Always render MainPanelScreen in the background if we are not in 'intro' mode
+    if (currentScreen == "main" || currentScreen == "menu" || currentScreen == "help") {
+        MainPanelScreen(
             currentSymbols = currentSymbols,
             decodedText = decodedText,
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
+            thresholdInfo = thresholdInfo,
             cameraView = cameraViewComposable,
             onNavigateToHelp = { currentScreen = "help" },
             onNavigateToMenu = { currentScreen = "menu" }
         )
-        "menu" -> MenuPanelScreen(
+    }
+
+    // Overlay modales
+    if (currentScreen == "menu") {
+        MenuPanelScreen(
             currentSymbols = currentSymbols,
             isTest1Active = isTest1Active,
+            thresholdInfo = thresholdInfo,
+            lastAdaptation = adaptiveThreshold.lastAdaptation,
+            currentFps = currentFps,
             onClearClick = { decodedText = "" },
             onSpeakClick = {
                 if (decodedText.isNotEmpty()) {
@@ -812,7 +832,8 @@ fun BlinkMorseUI() {
             },
             onClose = { currentScreen = "main" }
         )
-        "help" -> HelpPanelScreen(
+    } else if (currentScreen == "help") {
+        HelpPanelScreen(
             currentSymbols = currentSymbols,
             onClose = { currentScreen = "main" }
         )

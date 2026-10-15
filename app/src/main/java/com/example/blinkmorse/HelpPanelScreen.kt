@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -13,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -24,57 +22,37 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SolarBg)
+            .background(SolarBg.copy(alpha = 0.85f))
             .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(16.dp),
+        contentAlignment = Alignment.BottomCenter
     ) {
-        DimmedTopHeader()
-
+        // Floating Help Modal Window
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .wrapContentHeight()
                 .clip(RoundedCornerShape(24.dp))
                 .background(SolarBg)
                 .drawCyberGrid()
                 .border(1.5.dp, SolarLine, RoundedCornerShape(24.dp))
-                .padding(12.dp)
+                .padding(24.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Top Morse Indicator (capacity for 6 symbols)
-                Box(
-                    modifier = Modifier
-                        .widthIn(min = 160.dp)
-                        .height(36.dp)
-                        .clip(CircleShape)
-                        .background(SolarKeyBg)
-                        .border(1.5.dp, SolarLine, CircleShape)
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    LargeMorseVisualizer(
-                        morseCode = currentSymbols,
-                        maxSymbols = 6
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // Green Spell / Quick Assist HUD Frame
+                // Quick Assist Frame
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(SolarKeyBg.copy(alpha = 0.9f))
-                        .border(2.dp, SolarLine, RoundedCornerShape(16.dp))
-                        .padding(20.dp),
+                        .background(SolarKeyBg)
+                        .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
+                        .padding(16.dp),
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
@@ -174,7 +152,7 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Close Button
                 Row(

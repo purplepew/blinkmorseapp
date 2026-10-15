@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
@@ -28,6 +29,7 @@ fun MainPanelScreen(
     decodedText: String,
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
+    thresholdInfo: String = "",
     cameraView: @Composable () -> Unit = {},
     onNavigateToHelp: () -> Unit,
     onNavigateToMenu: () -> Unit,
@@ -61,27 +63,31 @@ fun MainPanelScreen(
                 modifier = Modifier.align(Alignment.TopEnd),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(SolarKeyBg)
                         .border(1.dp, SolarLine, RoundedCornerShape(16.dp))
                         .clickable { onNavigateToHelp() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text("?", color = SolarInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    MorseVisualizer(morseCode = "..-..", dotColor = SolarAccent2, dashColor = SolarAccent)
                 }
-                Box(
+                Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(16.dp))
                         .background(SolarKeyBg)
                         .border(1.dp, SolarLine, RoundedCornerShape(16.dp))
                         .clickable { onNavigateToMenu() }
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center,
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text("MENU", color = SolarInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    MorseVisualizer(morseCode = "---..", dotColor = SolarAccent2, dashColor = SolarAccent)
                 }
             }
 
@@ -122,6 +128,23 @@ fun MainPanelScreen(
                     )
                 }
             }
+
+            // Bottom Left: Compact Calibration Telemetry Indicator
+            Text(
+                text = if (thresholdInfo.isNotEmpty() && !thresholdInfo.contains("---")) {
+                    thresholdInfo
+                        .replace("Threshold:", "T:")
+                        .replace("Short:", "•")
+                        .replace("Long:", "—")
+                } else {
+                    "T: --- | • --- | — ---"
+                },
+                color = SolarMuted.copy(alpha = 0.85f),
+                fontSize = 9.sp,
+                fontFamily = FontFamily.Monospace,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.BottomStart),
+            )
 
             // Bottom Right: Face Tracking Indicator
             Row(

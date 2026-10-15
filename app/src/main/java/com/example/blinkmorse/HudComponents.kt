@@ -383,21 +383,6 @@ fun ActiveAvatarSvg() {
     }
 }
 
-@Composable
-fun DimmedTopHeader() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .alpha(0.2f)
-            .clip(RoundedCornerShape(16.dp))
-            .background(SolarKeyBg)
-            .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
-            .padding(12.dp)
-    ) {
-        MorseCheatSheetGrid()
-    }
-}
-
 @Suppress("unused")
 @Composable
 fun ExcalidrawStyleTextBox(

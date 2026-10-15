@@ -20,6 +20,9 @@ import androidx.compose.ui.unit.sp
 fun MenuPanelScreen(
     currentSymbols: String = "",
     isTest1Active: Boolean = false,
+    thresholdInfo: String = "",
+    lastAdaptation: String = "",
+    currentFps: Int = 0,
     onClearClick: () -> Unit,
     onSpeakClick: () -> Unit,
     onTest1Click: () -> Unit,
@@ -27,29 +30,27 @@ fun MenuPanelScreen(
     onRecalibrateClick: () -> Unit,
     onClose: () -> Unit,
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SolarBg)
+            .background(SolarBg.copy(alpha = 0.85f))
             .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(16.dp),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        DimmedTopHeader()
-
-        // Main Shell with Floating Menu Modal Window
+        // Floating Menu Modal Window
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .wrapContentHeight()
                 .clip(RoundedCornerShape(24.dp))
                 .background(SolarBg)
                 .drawCyberGrid()
                 .border(1.5.dp, SolarLine, RoundedCornerShape(24.dp))
-                .padding(16.dp),
+                .padding(24.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // Top Morse Indicator (capacity for 6 symbols)
@@ -69,14 +70,14 @@ fun MenuPanelScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Floating High-Tech Menu Box
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(16.dp))
-                        .background(SolarKeyBg.copy(alpha = 0.9f))
+                        .background(SolarKeyBg)
                         .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -87,8 +88,45 @@ fun MenuPanelScreen(
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = 4.sp,
-                        modifier = Modifier.padding(bottom = 16.dp),
+                        modifier = Modifier.padding(bottom = 12.dp),
                     )
+
+                    // Calibration Telemetry Details Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SolarDisplayBg.copy(alpha = 0.5f))
+                            .border(1.dp, SolarLine.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "CALIBRATION METRICS",
+                                color = SolarMuted,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp,
+                            )
+                            Text(
+                                text = thresholdInfo.ifEmpty { "Threshold: N/A | Dot: N/A | Dash: N/A" },
+                                color = SolarInk,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            if (lastAdaptation.isNotEmpty() && (lastAdaptation != "N/A")) {
+                                Text(
+                                    text = "Status: $lastAdaptation | FPS: $currentFps",
+                                    color = SolarMuted,
+                                    fontSize = 9.5.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Grid of Action Buttons
                     Row(
@@ -150,7 +188,7 @@ fun MenuPanelScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Close Button
                 Row(
