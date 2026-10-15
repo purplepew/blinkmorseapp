@@ -611,74 +611,90 @@ fun BlinkMorseUI() {
 
                                 when (appState) {
                                     AppState.CALIBRATING_SHORT -> {
-                                        adaptiveThreshold.seedShortSample(duration.toFloat())
-                                        shortCalibCount++
-                                        currentSymbols += "." // Accumulate short blinks in live buffer
-                                        sessionLogger.logBlink(
-                                            durationMs = duration,
-                                            shortCenter = adaptiveThreshold.shortCenter,
-                                            longCenter = adaptiveThreshold.longCenter,
-                                            threshold = adaptiveThreshold.threshold,
-                                            symbol = ".",
-                                            adaptation = "calibration_short"
-                                        )
-                                        coroutineScope.launch(Dispatchers.Default) {
-                                            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
-                                        }
-                                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [$shortCalibCount/10]")
-                                        
-                                        // Trigger Visual Flash
-                                        isFlashing = true
-                                        coroutineScope.launch {
-                                            delay(150)
-                                            isFlashing = false
-                                        }
-                                        
-                                        if (shortCalibCount >= 10) {
-                                            currentSymbols = "" // Clear for next phase
-                                            updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [0/10]")
+                                        if (duration < 350) {
+                                            adaptiveThreshold.seedShortSample(duration.toFloat())
+                                            shortCalibCount++
+                                            currentSymbols += "." // Accumulate short blinks in live buffer
+                                            sessionLogger.logBlink(
+                                                durationMs = duration,
+                                                shortCenter = adaptiveThreshold.shortCenter,
+                                                longCenter = adaptiveThreshold.longCenter,
+                                                threshold = adaptiveThreshold.threshold,
+                                                symbol = ".",
+                                                adaptation = "calibration_short"
+                                            )
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 100)
+                                            }
+                                            updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [$shortCalibCount/10]")
+                                            
+                                            // Trigger Visual Flash
+                                            isFlashing = true
+                                            coroutineScope.launch {
+                                                delay(150)
+                                                isFlashing = false
+                                            }
+                                            
+                                            if (shortCalibCount >= 10) {
+                                                currentSymbols = "" // Clear for next phase
+                                                updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [0/10]")
+                                            }
+                                        } else {
+                                            // Too long for a short blink! Reject & warn
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
+                                            }
+                                            Log.d("BlinkMorse", "Rejected blink during short calibration: duration $duration ms >= 350 ms")
                                         }
                                     }
                                     AppState.CALIBRATING_LONG -> {
-                                        adaptiveThreshold.seedLongSample(duration.toFloat())
-                                        longCalibCount++
-                                        currentSymbols += "-" // Accumulate long blinks in live buffer
-                                        sessionLogger.logBlink(
-                                            durationMs = duration,
-                                            shortCenter = adaptiveThreshold.shortCenter,
-                                            longCenter = adaptiveThreshold.longCenter,
-                                            threshold = adaptiveThreshold.threshold,
-                                            symbol = "-",
-                                            adaptation = "calibration_long"
-                                        )
-                                        coroutineScope.launch(Dispatchers.Default) {
-                                            toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
-                                        }
-                                        updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [$longCalibCount/10]")
-                                        
-                                        // Trigger Visual Flash
-                                        isFlashing = true
-                                        coroutineScope.launch {
-                                            delay(150)
-                                            isFlashing = false
-                                        }
-                                        
-                                        if (longCalibCount >= 10) {
-                                            currentSymbols = "" // Clear for typing phase
-                                            if (adaptiveThreshold.hasValidCalibration()) {
-                                                adaptiveThreshold.saveToPreferences(sharedPrefs)
-                                                hasSavedCalibration = true
-                                                val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
-                                                updateUIState(AppState.READY_TYPING, prompt)
-                                                coroutineScope.launch(Dispatchers.Default) {
-                                                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
-                                                }
-                                            } else {
-                                                updateUIState(AppState.CALIBRATION_FAILED, "Calibration Failed: Blinks not distinct enough. Please Recalibrate.")
-                                                coroutineScope.launch(Dispatchers.Default) {
-                                                    toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 300)
+                                        if (duration >= 350) {
+                                            adaptiveThreshold.seedLongSample(duration.toFloat())
+                                            longCalibCount++
+                                            currentSymbols += "-" // Accumulate long blinks in live buffer
+                                            sessionLogger.logBlink(
+                                                durationMs = duration,
+                                                shortCenter = adaptiveThreshold.shortCenter,
+                                                longCenter = adaptiveThreshold.longCenter,
+                                                threshold = adaptiveThreshold.threshold,
+                                                symbol = "-",
+                                                adaptation = "calibration_long"
+                                            )
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 300)
+                                            }
+                                            updateUIState(AppState.CALIBRATING_LONG, "Now perform 10 long blinks (dashes) [$longCalibCount/10]")
+                                            
+                                            // Trigger Visual Flash
+                                            isFlashing = true
+                                            coroutineScope.launch {
+                                                delay(150)
+                                                isFlashing = false
+                                            }
+                                            
+                                            if (longCalibCount >= 10) {
+                                                currentSymbols = "" // Clear for typing phase
+                                                if (adaptiveThreshold.hasValidCalibration()) {
+                                                    adaptiveThreshold.saveToPreferences(sharedPrefs)
+                                                    hasSavedCalibration = true
+                                                    val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                                                    updateUIState(AppState.READY_TYPING, prompt)
+                                                    coroutineScope.launch(Dispatchers.Default) {
+                                                        toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
+                                                    }
+                                                } else {
+                                                    updateUIState(AppState.CALIBRATION_FAILED, "Calibration Failed: Blinks not distinct enough. Please Recalibrate.")
+                                                    coroutineScope.launch(Dispatchers.Default) {
+                                                        toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 300)
+                                                    }
                                                 }
                                             }
+                                        } else {
+                                            // Too short for a long blink! Reject & warn
+                                            coroutineScope.launch(Dispatchers.Default) {
+                                                toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
+                                            }
+                                            Log.d("BlinkMorse", "Rejected blink during long calibration: duration $duration ms < 350 ms")
                                         }
                                     }
                                     AppState.CALIBRATION_FAILED -> {

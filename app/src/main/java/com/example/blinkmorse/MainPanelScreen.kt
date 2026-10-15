@@ -89,7 +89,7 @@ fun MainPanelScreen(
                 ) {
                     Text("MENU", color = SolarInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.height(2.dp))
-                    MorseVisualizer(morseCode = "---..", dotColor = SolarAccent2, dashColor = SolarAccent)
+                    MorseVisualizer(morseCode = "---.-", dotColor = SolarAccent2, dashColor = SolarAccent)
                 }
             }
 
