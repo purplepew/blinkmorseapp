@@ -372,6 +372,10 @@ fun BlinkMorseUI() {
     var isTest1Active by remember { mutableStateOf(false) }
     var currentFps by remember { mutableIntStateOf(0) }
     
+    // Camera & Flashlight State
+    var boundCamera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
+    var isTorchOn by remember { mutableStateOf(false) }
+    
     // UI Animation State
     var isFlashing by remember { mutableStateOf(false) }
 
@@ -503,6 +507,46 @@ fun BlinkMorseUI() {
                         "<DATALOGS>" -> {
                             showDataManagerBottomSheet(context)
                         }
+                        "<SIREN>" -> {
+                            isFlashing = true
+                            coroutineScope.launch(Dispatchers.Default) {
+                                repeat(3) {
+                                    toneGenerator.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 300)
+                                    delay(350)
+                                }
+                            }
+                            coroutineScope.launch {
+                                delay(1200)
+                                isFlashing = false
+                            }
+                        }
+                        "<MUSIC>" -> {
+                            coroutineScope.launch(Dispatchers.Default) {
+                                toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
+                                delay(200)
+                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_1, 150)
+                                delay(200)
+                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_3, 150)
+                                delay(200)
+                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_5, 150)
+                                delay(200)
+                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_A, 250)
+                            }
+                        }
+                        "<FLASHLIGHT>" -> {
+                            isTorchOn = !isTorchOn
+                            boundCamera?.cameraControl?.enableTorch(isTorchOn)
+                        }
+                        "<QUICK_SOS>" -> {
+                            decodedText += "EMERGENCY HELP NEEDED! "
+                        }
+                        "<STATUS>" -> {
+                            val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
+                            val batteryLevel = bm?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY) ?: -1
+                            val timeStr = java.text.SimpleDateFormat("h:mm a", Locale.US).format(java.util.Date())
+                            val statusMsg = if (batteryLevel >= 0) "Battery $batteryLevel percent, time is $timeStr" else "Time is $timeStr"
+                            tts?.speak(statusMsg, TextToSpeech.QUEUE_FLUSH, null, null)
+                        }
                         else -> {
                             decodedText += decodedChar
                         }
@@ -514,7 +558,8 @@ fun BlinkMorseUI() {
                         when (decodedChar) {
                             "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
                             "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
-                            "<MENU>", "<HELP>", "<TEST1>", "<DATALOGS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
+                            "<MENU>", "<HELP>", "<TEST1>", "<DATALOGS>", "<FLASHLIGHT>", "<QUICK_SOS>", "<STATUS>" -> 
+                                toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
                             else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                         }
                     }
@@ -745,7 +790,7 @@ fun BlinkMorseUI() {
 
                         try {
                             cameraProvider.unbindAll()
-                            cameraProvider.bindToLifecycle(
+                            boundCamera = cameraProvider.bindToLifecycle(
                                 lifecycleOwner,
                                 cameraSelector,
                                 preview,

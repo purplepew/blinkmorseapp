@@ -27,12 +27,16 @@ class MorseDecoder(
             "....." to "5", "-...." to "6", "--..." to "7",
             "---.." to "<MENU>", // Custom Menu command (overrides '8')
             "----." to "9",
-            "..--" to " ",       // Custom dedicated space command
-            "....-" to "<BS>",   // Custom backspace (delete last character) - overrides '4'
-            ".-.-" to "<SPEAK>", // Custom Speak & Clear command
-            "..-.." to "<HELP>",  // Custom Help command (overrides '?')
-            ".--.-." to "<TEST1>", // Custom Start/Cancel Test 1 command
-            ".-...-" to "<DATALOGS>" // Custom Data Logs command
+            "..--" to " ",          // Custom dedicated space command
+            "....-" to "<BS>",      // Custom backspace / clear - overrides '4'
+            "..-.." to "<HELP>",     // Custom Help command (overrides '?')
+            ".--.-." to "<TEST1>",    // Custom Start/Cancel Test 1 command
+            ".-...-" to "<DATALOGS>", // Custom Data Logs command
+            "---..." to "<SIREN>",   // Custom Emergency Siren command
+            "----.." to "<MUSIC>",   // Custom Music Playlist command
+            ".-.-.-" to "<FLASHLIGHT>", // Custom Flashlight command
+            "-.-.-" to "<QUICK_SOS>", // Custom Quick SOS Message command
+            "-...-" to "<STATUS>"    // Custom Battery & Time Status command
         )
     }
 
