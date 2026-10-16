@@ -12,6 +12,7 @@ import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.WindowManager
 import android.widget.CheckBox
 import android.widget.GridLayout
 import android.widget.ImageButton
@@ -91,6 +92,7 @@ enum class AppState {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         enableEdgeToEdge()
         setContent {
             BlinkMorseTheme {
@@ -792,6 +794,7 @@ fun BlinkMorseUI() {
             modifier = Modifier.fillMaxSize(),
             factory = { ctx ->
                 PreviewView(ctx).apply {
+                    keepScreenOn = true
                     scaleType = PreviewView.ScaleType.FILL_CENTER
                     implementationMode = PreviewView.ImplementationMode.PERFORMANCE
                     
