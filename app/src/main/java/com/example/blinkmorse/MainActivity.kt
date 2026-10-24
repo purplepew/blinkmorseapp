@@ -199,8 +199,13 @@ fun showDataManagerBottomSheet(context: Context) {
 
     fun loadFiles() {
         llFileList.removeAllViews()
-        val files = context.filesDir.listFiles { _, name -> name.endsWith(".csv") }
-            ?.sortedBy { it.name } ?: emptyList()
+        val dir = File(context.filesDir, "logs")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        
+        val files = dir.listFiles { _, name -> name.endsWith(".csv") }
+            ?.sortedByDescending { it.name } ?: emptyList()
 
         val checkBoxes = mutableListOf<CheckBox>()
         val fileMap = mutableMapOf<CheckBox, File>()
@@ -397,6 +402,7 @@ fun BlinkMorseUI() {
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
     var isFatigueTestActive by remember { mutableStateOf(false) }
+    var lastBlinkDuration by remember { mutableStateOf<Long?>(null) }
     var currentFps by remember { mutableIntStateOf(0) }
     var keypadMode by remember { mutableStateOf(KeypadMode.ABC) }
     
@@ -635,6 +641,7 @@ fun BlinkMorseUI() {
 
                             if (blinkResult.blinkEnded && blinkResult.durationMs != null) {
                                 val duration = blinkResult.durationMs
+                                lastBlinkDuration = duration
 
                                 when (appState) {
                                     AppState.CALIBRATING_SHORT -> {
@@ -909,6 +916,7 @@ fun BlinkMorseUI() {
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
             isFatigueTestActive = isFatigueTestActive,
+            lastBlinkDuration = lastBlinkDuration,
             thresholdInfo = thresholdInfo,
             keypadMode = keypadMode,
             onModeChange = { keypadMode = it },

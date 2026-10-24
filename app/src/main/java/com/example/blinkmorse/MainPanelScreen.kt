@@ -30,6 +30,7 @@ fun MainPanelScreen(
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
     isFatigueTestActive: Boolean,
+    lastBlinkDuration: Long? = null,
     thresholdInfo: String = "",
     keypadMode: KeypadMode = KeypadMode.ABC,
     onModeChange: (KeypadMode) -> Unit = {},
@@ -158,6 +159,18 @@ fun MainPanelScreen(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.align(Alignment.BottomStart),
             )
+
+            // Bottom Center: Last Blink Duration Indicator
+            if (lastBlinkDuration != null) {
+                Text(
+                    text = "${lastBlinkDuration}ms",
+                    color = SolarMuted,
+                    fontSize = 9.sp,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
 
             // Bottom Right: Face Tracking Indicator
             Row(
