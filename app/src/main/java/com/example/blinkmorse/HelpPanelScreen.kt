@@ -88,22 +88,22 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                         description = "Play siren alarm & flash screen",
                     )
                     ActionCommandItem(
-                        icon = "🎵",
-                        name = "Music Playlist",
+                        icon = "⚕️",
+                        name = "Clinical Care Alert",
                         morse = "----..",
-                        description = "Play synth audio melody track",
+                        description = "Speak: I am experiencing discomfort...",
                     )
                     ActionCommandItem(
                         icon = "🔦",
-                        name = "Torch / Flashlight",
+                        name = "Night Call Light",
                         morse = ".-.-.-",
-                        description = "Toggle camera LED flashlight",
+                        description = "Visually signal caregiver in darkened room",
                     )
                     ActionCommandItem(
                         icon = "💬",
                         name = "Quick SOS Text",
                         morse = "-.-.-",
-                        description = "Insert emergency help sentence",
+                        description = "Insert emergency text & auto-speak",
                     )
                     ActionCommandItem(
                         icon = "🔋",

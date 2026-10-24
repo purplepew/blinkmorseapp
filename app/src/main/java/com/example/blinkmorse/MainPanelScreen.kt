@@ -29,6 +29,7 @@ fun MainPanelScreen(
     decodedText: String,
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
+    isFatigueTestActive: Boolean,
     thresholdInfo: String = "",
     keypadMode: KeypadMode = KeypadMode.ABC,
     onModeChange: (KeypadMode) -> Unit = {},

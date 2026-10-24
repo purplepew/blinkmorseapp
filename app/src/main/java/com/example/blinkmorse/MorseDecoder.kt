@@ -35,12 +35,13 @@ class MorseDecoder(
             ".--.-." to "<TEST1>",    // Custom Start/Cancel Test 1 command
             ".-...-" to "<DATALOGS>", // Custom Data Logs command
             "---..." to "<SIREN>",   // Custom Emergency Siren command
-            "----.." to "<MUSIC>",   // Custom Music Playlist command
-            ".-.-.-" to "<FLASHLIGHT>", // Custom Flashlight command
+            "----.." to "<CARE_ALERT>", // Custom Clinical Care Request command
+            ".-.-.-" to "<NIGHT_CALL>", // Custom Night Call Light command
             "-.-.-" to "<QUICK_SOS>", // Custom Quick SOS Message command
             "-...-" to "<STATUS>",   // Custom Battery & Time Status command
             ".-.-." to "<TOGGLE_KEYPAD>", // Custom Hands-Free Keypad Mode Toggle command
-            "..-.-" to "<CLOSE>"     // Custom Close Modal command
+            "..-.-" to "<CLOSE>",    // Custom Close Modal command
+            "-.-.--" to "<FATIGUE_TEST>" // Custom Fatigue Test command
         )
     }
 

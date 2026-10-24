@@ -396,6 +396,7 @@ fun BlinkMorseUI() {
     }
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
+    var isFatigueTestActive by remember { mutableStateOf(false) }
     var currentFps by remember { mutableIntStateOf(0) }
     var keypadMode by remember { mutableStateOf(KeypadMode.ABC) }
     
@@ -527,6 +528,19 @@ fun BlinkMorseUI() {
                                 }
                             }
                         }
+                        "<FATIGUE_TEST>" -> {
+                            currentScreen = "main"
+                            if (isFatigueTestActive) {
+                                isFatigueTestActive = false
+                                updateUIState(AppState.READY_TYPING, "Typing Mode")
+                            } else {
+                                isFatigueTestActive = true
+                                sessionLogger.startNewSession()
+                                decodedText = ""
+                                currentSymbols = ""
+                                updateUIState(AppState.READY_TYPING, "FATIGUE TEST: 15-Min Trial Mode")
+                            }
+                        }
                         "<DATALOGS>" -> {
                             showDataManagerBottomSheet(context)
                         }
@@ -543,25 +557,20 @@ fun BlinkMorseUI() {
                                 isFlashing = false
                             }
                         }
-                        "<MUSIC>" -> {
-                            coroutineScope.launch(Dispatchers.Default) {
-                                toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
-                                delay(200)
-                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_1, 150)
-                                delay(200)
-                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_3, 150)
-                                delay(200)
-                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_5, 150)
-                                delay(200)
-                                toneGenerator.startTone(ToneGenerator.TONE_DTMF_A, 250)
-                            }
+                        "<CARE_ALERT>" -> {
+                            val alertMsg = "I am experiencing discomfort, please check on me."
+                            decodedText += "[$alertMsg] "
+                            tts?.speak(alertMsg, TextToSpeech.QUEUE_FLUSH, null, "CareAlertTTS")
+                            Log.d("BlinkMorse", "Care Alert triggered.")
                         }
-                        "<FLASHLIGHT>" -> {
+                        "<NIGHT_CALL>" -> {
                             isTorchOn = !isTorchOn
                             boundCamera?.cameraControl?.enableTorch(isTorchOn)
                         }
                         "<QUICK_SOS>" -> {
-                            decodedText += "EMERGENCY HELP NEEDED! "
+                            val sosMsg = "EMERGENCY HELP NEEDED!"
+                            decodedText += "$sosMsg "
+                            tts?.speak(sosMsg, TextToSpeech.QUEUE_FLUSH, null, "QuickSOSTTS")
                         }
                         "<STATUS>" -> {
                             val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
@@ -881,7 +890,11 @@ fun BlinkMorseUI() {
                     }
                 } else {
                     appState = AppState.READY_TYPING
-                    promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15x (No spaces)" else "Typing Mode"
+                    promptMessage = when {
+                        isTest1Active -> "TEST 1: Spell 'SOS' 15x (No spaces)"
+                        isFatigueTestActive -> "FATIGUE TEST: 15-Min Trial Mode"
+                        else -> "Typing Mode"
+                    }
                     currentScreen = "main"
                 }
             }
@@ -895,6 +908,7 @@ fun BlinkMorseUI() {
             decodedText = decodedText,
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
+            isFatigueTestActive = isFatigueTestActive,
             thresholdInfo = thresholdInfo,
             keypadMode = keypadMode,
             onModeChange = { keypadMode = it },
@@ -909,14 +923,10 @@ fun BlinkMorseUI() {
         MenuPanelScreen(
             currentSymbols = currentSymbols,
             isTest1Active = isTest1Active,
+            isFatigueTestActive = isFatigueTestActive,
             thresholdInfo = thresholdInfo,
             lastAdaptation = adaptiveThreshold.lastAdaptation,
             currentFps = currentFps,
-            onClearClick = { decodedText = "" },
-            onSpeakClick = {
-                val textToSay = decodedText.ifEmpty { "No text to speak" }
-                tts?.speak(textToSay, TextToSpeech.QUEUE_FLUSH, null, "BlinkMorseTTS")
-            },
             onTest1Click = {
                 currentScreen = "main"
                 if (isTest1Active) {
@@ -930,9 +940,23 @@ fun BlinkMorseUI() {
                     updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
                 }
             },
+            onFatigueTestClick = {
+                currentScreen = "main"
+                if (isFatigueTestActive) {
+                    isFatigueTestActive = false
+                    updateUIState(AppState.READY_TYPING, "Typing Mode")
+                } else {
+                    isFatigueTestActive = true
+                    sessionLogger.startNewSession()
+                    decodedText = ""
+                    currentSymbols = ""
+                    updateUIState(AppState.READY_TYPING, "FATIGUE TEST: 15-Min Trial Mode")
+                }
+            },
             onDataManagerClick = { showDataManagerBottomSheet(context) },
             onRecalibrateClick = {
                 isTest1Active = false
+                isFatigueTestActive = false
                 sharedPrefs.edit().clear().apply()
                 hasSavedCalibration = false
                 adaptiveThreshold.reset()
