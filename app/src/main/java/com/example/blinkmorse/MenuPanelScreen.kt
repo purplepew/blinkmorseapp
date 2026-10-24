@@ -239,13 +239,7 @@ fun MenuButton(title: String, morse: String, onClick: () -> Unit, modifier: Modi
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
         )
-        Text(
-            text = morse,
-            color = SolarMuted,
-            fontSize = 10.sp,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = 2.sp,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+        Spacer(modifier = Modifier.height(4.dp))
+        MorseVisualizer(morseCode = morse)
     }
 }

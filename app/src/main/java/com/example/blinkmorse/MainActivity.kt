@@ -80,7 +80,7 @@ import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
-const val TEST_1_TARGET_LENGTH = 59
+const val TEST_1_TARGET_LENGTH = 45 // "SOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOS" (length 45)
 
 enum class AppState {
     CALIBRATING_SHORT,
@@ -505,26 +505,26 @@ fun BlinkMorseUI() {
                             Log.d("BlinkMorse", "HELP opened via Morse command.")
                         }
                         "<TEST1>" -> {
+                            currentScreen = "main"
                             if (isTest1Active) {
                                 isTest1Active = false
                                 if (adaptiveThreshold.hasValidCalibration()) {
                                     updateUIState(AppState.READY_TYPING, "Typing Mode")
                                 } else {
-                                    adaptiveThreshold.reset()
-                                    shortCalibCount = 0
-                                    longCalibCount = 0
-                                    currentSymbols = ""
-                                    updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                                    // Should ideally not be possible, but just in case
+                                    updateUIState(AppState.READY_TYPING, "Typing Mode")
                                 }
                             } else {
                                 isTest1Active = true
                                 sessionLogger.startNewSession()
                                 decodedText = ""
-                                adaptiveThreshold.reset()
-                                shortCalibCount = 0
-                                longCalibCount = 0
                                 currentSymbols = ""
-                                updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                                if (adaptiveThreshold.hasValidCalibration()) {
+                                    updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
+                                } else {
+                                    // If not calibrated, still let them test or fallback
+                                    updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
+                                }
                             }
                         }
                         "<DATALOGS>" -> {
@@ -695,7 +695,7 @@ fun BlinkMorseUI() {
                                                 if (adaptiveThreshold.hasValidCalibration()) {
                                                     adaptiveThreshold.saveToPreferences(sharedPrefs)
                                                     hasSavedCalibration = true
-                                                    val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                                                    val prompt = if (isTest1Active) "TEST 1: Spell 'SOS' 15x (No spaces)" else "Typing Mode"
                                                     updateUIState(AppState.READY_TYPING, prompt)
                                                     coroutineScope.launch(Dispatchers.Default) {
                                                         toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
@@ -876,12 +876,12 @@ fun BlinkMorseUI() {
                 if (shortCalibCount < 10 || longCalibCount < 10) {
                     if (adaptiveThreshold.loadFromPreferences(sharedPrefs)) {
                         appState = AppState.READY_TYPING
-                        promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                        promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15x (No spaces)" else "Typing Mode"
                         currentScreen = "main"
                     }
                 } else {
                     appState = AppState.READY_TYPING
-                    promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15 times" else "Typing Mode"
+                    promptMessage = if (isTest1Active) "TEST 1: Spell 'SOS' 15x (No spaces)" else "Typing Mode"
                     currentScreen = "main"
                 }
             }
@@ -918,26 +918,16 @@ fun BlinkMorseUI() {
                 tts?.speak(textToSay, TextToSpeech.QUEUE_FLUSH, null, "BlinkMorseTTS")
             },
             onTest1Click = {
+                currentScreen = "main"
                 if (isTest1Active) {
                     isTest1Active = false
-                    if (adaptiveThreshold.hasValidCalibration()) {
-                        updateUIState(AppState.READY_TYPING, "Typing Mode")
-                    } else {
-                        adaptiveThreshold.reset()
-                        shortCalibCount = 0
-                        longCalibCount = 0
-                        currentSymbols = ""
-                        updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
-                    }
+                    updateUIState(AppState.READY_TYPING, "Typing Mode")
                 } else {
                     isTest1Active = true
                     sessionLogger.startNewSession()
                     decodedText = ""
-                    adaptiveThreshold.reset()
-                    shortCalibCount = 0
-                    longCalibCount = 0
                     currentSymbols = ""
-                    updateUIState(AppState.CALIBRATING_SHORT, "Perform 10 short blinks (dots) [0/10]")
+                    updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
                 }
             },
             onDataManagerClick = { showDataManagerBottomSheet(context) },

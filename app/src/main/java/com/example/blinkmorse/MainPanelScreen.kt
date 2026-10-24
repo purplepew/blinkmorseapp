@@ -100,16 +100,26 @@ fun MainPanelScreen(
             ) {
                 if (isTest1Active) {
                     val annotatedString = buildAnnotatedString {
-                        val target = "SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS"
-                        for (i in target.indices) {
-                            if (i < decodedText.length) {
-                                if (decodedText[i] == target[i]) {
-                                    withStyle(style = SpanStyle(color = SolarAccent2)) { append(decodedText[i]) }
-                                } else {
-                                    withStyle(style = SpanStyle(color = SolarAccent)) { append(decodedText[i]) }
-                                }
+                        val visualTarget = "SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS"
+                        var decodedIndex = 0
+
+                        for (i in visualTarget.indices) {
+                            val targetChar = visualTarget[i]
+                            
+                            if (targetChar == ' ') {
+                                withStyle(style = SpanStyle(color = SolarMuted)) { append(" ") }
                             } else {
-                                withStyle(style = SpanStyle(color = SolarMuted)) { append(target[i]) }
+                                if (decodedIndex < decodedText.length) {
+                                    val decodedChar = decodedText[decodedIndex]
+                                    if (decodedChar == targetChar) {
+                                        withStyle(style = SpanStyle(color = SolarAccent2)) { append(decodedChar) }
+                                    } else {
+                                        withStyle(style = SpanStyle(color = SolarAccent)) { append(decodedChar) }
+                                    }
+                                    decodedIndex++
+                                } else {
+                                    withStyle(style = SpanStyle(color = SolarMuted)) { append(targetChar) }
+                                }
                             }
                         }
                     }
