@@ -15,14 +15,17 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.util.Locale
 
 @Composable
 fun MenuPanelScreen(
     currentSymbols: String = "",
     isTest1Active: Boolean = false,
+    characterGapMs: Long = 2500L,
     thresholdInfo: String = "",
     lastAdaptation: String = "",
     currentFps: Int = 0,
+    onCharacterGapChange: (Long) -> Unit = {},
     onTest1Click: () -> Unit,
     onDataManagerClick: () -> Unit,
     onRecalibrateClick: () -> Unit,
@@ -124,7 +127,106 @@ fun MenuPanelScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Inter-Character Gap (Pause Timeout) Setting Box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SolarDisplayBg.copy(alpha = 0.5f))
+                            .border(1.dp, SolarLine.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .padding(10.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "CHARACTER PAUSE GAP",
+                                    color = SolarMuted,
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp,
+                                )
+                                Text(
+                                    text = String.format(Locale.US, "%.2fs", characterGapMs / 1000f),
+                                    color = SolarInk,
+                                    fontSize = 11.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+
+                            // Preset Pills Row
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // -0.25s Button
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(SolarKeyBg)
+                                        .border(1.dp, SolarLine, RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            if (characterGapMs > 1000L) {
+                                                onCharacterGapChange(characterGapMs - 250L)
+                                            }
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("-", color = SolarInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                val presets = listOf(1500L, 2000L, 2500L, 3000L, 3500L)
+                                presets.forEach { preset ->
+                                    val isSelected = (characterGapMs == preset)
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (isSelected) SolarAccent else SolarKeyBg)
+                                            .border(1.dp, if (isSelected) SolarAccent else SolarLine, RoundedCornerShape(6.dp))
+                                            .clickable { onCharacterGapChange(preset) }
+                                            .padding(vertical = 4.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = String.format(Locale.US, "%.1fs", preset / 1000f),
+                                            color = if (isSelected) SolarBg else SolarInk,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                // +0.25s Button
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(SolarKeyBg)
+                                        .border(1.dp, SolarLine, RoundedCornerShape(6.dp))
+                                        .clickable {
+                                            if (characterGapMs < 5000L) {
+                                                onCharacterGapChange(characterGapMs + 250L)
+                                            }
+                                        }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("+", color = SolarInk, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     // Grid of Action Buttons
                     Row(

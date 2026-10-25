@@ -405,12 +405,7 @@ fun BlinkMorseUI() {
     var lastBlinkDuration by remember { mutableStateOf<Long?>(null) }
     var currentFps by remember { mutableIntStateOf(0) }
     var keypadMode by remember { mutableStateOf(KeypadMode.ABC) }
-
-    // Telemetry State for Test 1
-    var testStartTimeMs by remember { mutableStateOf(0L) }
-    var testEndTimeMs by remember { mutableStateOf(0L) }
-    var totalValidBlinksInTest by remember { mutableIntStateOf(0) }
-    var initialThresholdMs by remember { mutableStateOf(0f) }
+    var characterGapMs by remember { mutableStateOf(sharedPrefs.getLong("characterGapMs", 2500L)) }
     
     // Camera & Flashlight State
     var boundCamera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
@@ -477,7 +472,6 @@ fun BlinkMorseUI() {
                 // Auto-finish Test 1 using the strict length limit
                 if (decodedText.length >= TEST_1_TARGET_LENGTH) {
                     val endTime = android.os.SystemClock.uptimeMillis()
-                    testEndTimeMs = endTime
                     coroutineScope.launch(Dispatchers.Main) {
                         toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
                         
@@ -486,10 +480,7 @@ fun BlinkMorseUI() {
                             testMode = "ADAPTIVE",
                             targetString = TEST_1_TARGET_STRING,
                             decodedString = decodedText,
-                            testStartTimeMs = testStartTimeMs,
                             testEndTimeMs = endTime,
-                            totalValidBlinks = totalValidBlinksInTest,
-                            initialThresholdMs = initialThresholdMs,
                             finalThresholdMs = adaptiveThreshold.threshold
                         )
                         if (fileName != null) {
@@ -624,6 +615,8 @@ fun BlinkMorseUI() {
                 }
             }
         }
+    }.apply {
+        this.characterGapMs = characterGapMs
     }
 
     val detector = remember {
@@ -740,22 +733,21 @@ fun BlinkMorseUI() {
                                     }
                                     AppState.READY_TYPING -> {
                                         val symbol = adaptiveThreshold.classifyAndAdapt(duration)
+                                        val seqToLog = morseDecoder.currentSequence + symbol
 
                                         val symbolAccepted = morseDecoder.addSymbol(symbol)
 
-                                        // Ensure we log the exact state BEFORE the decoder potentially wipes it 
-                                        // or after it has updated `currentSymbols` via `onSymbolUpdated`
                                         sessionLogger.logBlink(
-                                            testStartTimeMs = testStartTimeMs,
                                             charAttemptIndex = decodedText.length + 1,
                                             targetChar = if (isTest1Active && decodedText.length < TEST_1_TARGET_STRING.length) TEST_1_TARGET_STRING[decodedText.length] else '?',
                                             durationMs = duration,
                                             shortCenter = adaptiveThreshold.shortCenter,
                                             longCenter = adaptiveThreshold.longCenter,
                                             threshold = adaptiveThreshold.threshold,
+                                            characterGapMs = characterGapMs,
                                             symbol = symbol,
                                             adaptation = adaptiveThreshold.lastAdaptation,
-                                            stagedSequence = currentSymbols
+                                            stagedSequence = seqToLog
                                         )
 
                                         if (!symbolAccepted) {
@@ -935,9 +927,15 @@ fun BlinkMorseUI() {
         MenuPanelScreen(
             currentSymbols = currentSymbols,
             isTest1Active = isTest1Active,
+            characterGapMs = characterGapMs,
             thresholdInfo = thresholdInfo,
             lastAdaptation = adaptiveThreshold.lastAdaptation,
             currentFps = currentFps,
+            onCharacterGapChange = { newGap ->
+                characterGapMs = newGap
+                morseDecoder.characterGapMs = newGap
+                sharedPrefs.edit().putLong("characterGapMs", newGap).apply()
+            },
             onTest1Click = {
                 currentScreen = "main"
                 if (isTest1Active) {
@@ -949,10 +947,6 @@ fun BlinkMorseUI() {
                     morseDecoder.isStrictMode = true
                     adaptiveThreshold.resetToCalibratedBaseline(sharedPrefs)
                     sessionLogger.startNewSession()
-                    testStartTimeMs = 0L
-                    testEndTimeMs = 0L
-                    totalValidBlinksInTest = 0
-                    initialThresholdMs = 0f
                     decodedText = ""
                     currentSymbols = ""
                     updateUIState(AppState.READY_TYPING, "TESTING: Spell 'SOS' 15x")

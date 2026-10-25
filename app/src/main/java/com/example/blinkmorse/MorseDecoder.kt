@@ -16,7 +16,7 @@ class MorseDecoder(
     companion object {
         const val MORSE_CHARACTER_GAP_MS = 2500L
 
-        private val MORSE_MAP = mapOf(
+        val MORSE_MAP = mapOf(
             ".-" to "A", "-..." to "B", "-.-." to "C", "-.." to "D", "." to "E",
             "..-." to "F", "--." to "G", "...." to "H", ".." to "I", ".---" to "J",
             "-.-" to "K", ".-.." to "L", "--" to "M", "-." to "N", "---" to "O",
@@ -46,9 +46,11 @@ class MorseDecoder(
     }
 
     private var currentSymbols = ""
+    val currentSequence: String get() = currentSymbols
     private var timeoutJob: Job? = null
     
     var isStrictMode = false
+    var characterGapMs: Long = MORSE_CHARACTER_GAP_MS
 
     fun addSymbol(symbol: String): Boolean {
         currentSymbols += symbol
@@ -78,7 +80,7 @@ class MorseDecoder(
     private fun resetTimeout() {
         timeoutJob?.cancel()
         timeoutJob = coroutineScope.launch(Dispatchers.Main) {
-            delay(MORSE_CHARACTER_GAP_MS)
+            delay(characterGapMs)
             decodeCurrent()
         }
     }

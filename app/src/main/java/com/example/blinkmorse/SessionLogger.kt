@@ -7,7 +7,6 @@ import java.io.FileWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.min
 
 data class BlinkLogEntry(
     val blinkIndex: Int,
@@ -19,38 +18,58 @@ data class BlinkLogEntry(
     val shortCenterMs: Float,
     val longCenterMs: Float,
     val thresholdMs: Float,
+    val characterGapMs: Long = 2500L,
     val symbol: String,
     val adaptationStatus: String,
     var stagedSequence: String,
-    var decodedChar: String = ""
+    var decodedChar: String = "",
+    val fixedSymbol: String = "",
+    var fixedDecodedChar: String = ""
 )
 
 class SessionLogger {
     private val logs = mutableListOf<BlinkLogEntry>()
     private var sessionStartTimeMs: Long = 0
+    private var firstBlinkTimestampMs: Long = 0L
     private var blinkCounter = 0
+    private var fixedCalibratedThresholdMs: Float = 0f
+    private var fixedCurrentSymbols: String = ""
+    private var fixedDecodedString: String = ""
 
     fun startNewSession() {
         logs.clear()
         sessionStartTimeMs = System.currentTimeMillis()
+        firstBlinkTimestampMs = 0L
         blinkCounter = 0
+        fixedCalibratedThresholdMs = 0f
+        fixedCurrentSymbols = ""
+        fixedDecodedString = ""
     }
 
     fun logBlink(
-        testStartTimeMs: Long = 0L,
         charAttemptIndex: Int = 0,
         targetChar: Char = ' ',
         durationMs: Long,
         shortCenter: Float,
         longCenter: Float,
         threshold: Float,
+        characterGapMs: Long = 2500L,
         symbol: String,
         adaptation: String,
         stagedSequence: String = ""
     ) {
         blinkCounter++
         val timestamp = System.currentTimeMillis()
-        val elapsedSec = if (testStartTimeMs > 0) (timestamp - testStartTimeMs) / 1000f else 0f
+        if (logs.isEmpty()) {
+            firstBlinkTimestampMs = timestamp
+            fixedCalibratedThresholdMs = threshold
+            fixedCurrentSymbols = ""
+            fixedDecodedString = ""
+        }
+
+        val elapsedSec = (timestamp - firstBlinkTimestampMs) / 1000.0f
+        val fixedSymbol = if (durationMs.toFloat() < fixedCalibratedThresholdMs) "." else "-"
+        fixedCurrentSymbols += fixedSymbol
 
         val entry = BlinkLogEntry(
             blinkIndex = blinkCounter,
@@ -62,16 +81,29 @@ class SessionLogger {
             shortCenterMs = shortCenter,
             longCenterMs = longCenter,
             thresholdMs = threshold,
+            characterGapMs = characterGapMs,
             symbol = symbol,
             adaptationStatus = adaptation,
-            stagedSequence = stagedSequence
+            stagedSequence = stagedSequence,
+            fixedSymbol = fixedSymbol
         )
         logs.add(entry)
     }
 
     fun attachDecodedChar(decodedChar: String) {
         if (logs.isNotEmpty()) {
-            logs.last().decodedChar = decodedChar
+            val lastEntry = logs.last()
+            lastEntry.decodedChar = decodedChar
+
+            val fixedLookup = MorseDecoder.MORSE_MAP[fixedCurrentSymbols]
+            val fixedDecoded = if (fixedCurrentSymbols.length >= 7 || fixedLookup == null || fixedLookup.startsWith("<") || fixedLookup == " ") {
+                "#"
+            } else {
+                fixedLookup
+            }
+            lastEntry.fixedDecodedChar = fixedDecoded
+            fixedDecodedString += fixedDecoded
+            fixedCurrentSymbols = ""
         }
     }
 
@@ -104,11 +136,8 @@ class SessionLogger {
         testMode: String,
         targetString: String,
         decodedString: String,
-        testStartTimeMs: Long,
-        testEndTimeMs: Long,
-        totalValidBlinks: Int,
-        initialThresholdMs: Float,
-        finalThresholdMs: Float
+        testEndTimeMs: Long = 0L,
+        finalThresholdMs: Float = 0f
     ): String? {
         if (logs.isEmpty()) return null
 
@@ -123,31 +152,41 @@ class SessionLogger {
         try {
             FileWriter(file).use { writer ->
                 // Section 1: Time-series rows
-                writer.append("BlinkIndex,TimestampMs,ElapsedTestSec,CharAttemptIndex,TargetChar,DurationMs,ShortCenterMs,LongCenterMs,ThresholdMs,Symbol,AdaptationStatus,StagedSequence,DecodedChar\n")
+                writer.append("BlinkIndex,TimestampMs,ElapsedTestSec,CharAttemptIndex,TargetChar,DurationMs,ShortCenterMs,LongCenterMs,ThresholdMs,CharacterGapMs,Symbol,AdaptationStatus,StagedSequence,DecodedChar,FixedSymbol,FixedDecodedChar\n")
                 for (log in logs) {
                     writer.append("${log.blinkIndex},${log.timestampMs},${String.format(Locale.US, "%.2f", log.elapsedTestSec)},")
                     writer.append("${log.charAttemptIndex},${log.targetChar},${log.durationMs},")
-                    writer.append("${log.shortCenterMs},${log.longCenterMs},${log.thresholdMs},")
-                    writer.append("${log.symbol},${log.adaptationStatus},${log.stagedSequence},${log.decodedChar}\n")
+                    writer.append("${String.format(Locale.US, "%.2f", log.shortCenterMs)},${String.format(Locale.US, "%.2f", log.longCenterMs)},${String.format(Locale.US, "%.2f", log.thresholdMs)},")
+                    writer.append("${log.characterGapMs},${log.symbol},${log.adaptationStatus},${log.stagedSequence},${log.decodedChar},${log.fixedSymbol},${log.fixedDecodedChar}\n")
                 }
 
-                // Mathematical Computations
-                val elapsedDurationSec = if (testStartTimeMs > 0 && testEndTimeMs > testStartTimeMs) {
-                    (testEndTimeMs - testStartTimeMs) / 1000f
-                } else {
-                    0f
-                }
+                // Internalized Mathematical Computations
+                val totalValidBlinks = logs.size
+                val idealBlinks = 135 // For 15x SOS
+                val bor = totalValidBlinks.toFloat() / idealBlinks.toFloat()
+
+                val lastGap = logs.lastOrNull()?.characterGapMs ?: 2500L
+                val startMs = logs.firstOrNull()?.timestampMs ?: 0L
+                val endMs = if (testEndTimeMs > startMs) testEndTimeMs else ((logs.lastOrNull()?.timestampMs ?: startMs) + lastGap)
+                val elapsedDurationSec = if (endMs > startMs && logs.isNotEmpty()) (endMs - startMs) / 1000.0f else 0.0f
                 val elapsedMinutes = elapsedDurationSec / 60.0f
+
                 val targetLength = targetString.length
-                
+                val wpm = if (elapsedMinutes > 0f) (targetLength / 5.0f) / elapsedMinutes else 0.0f
+
+                val initialShortCenterMs = logs.firstOrNull()?.shortCenterMs ?: 0f
+                val finalShortCenterMs = logs.lastOrNull()?.shortCenterMs ?: initialShortCenterMs
+                val initialLongCenterMs = logs.firstOrNull()?.longCenterMs ?: 0f
+                val finalLongCenterMs = logs.lastOrNull()?.longCenterMs ?: initialLongCenterMs
+                val initialThresholdMs = logs.firstOrNull()?.thresholdMs ?: fixedCalibratedThresholdMs
+                val effectiveFinalThreshold = if (finalThresholdMs > 0f) finalThresholdMs else (logs.lastOrNull()?.thresholdMs ?: initialThresholdMs)
+                val thresholdDrift = effectiveFinalThreshold - initialThresholdMs
+                val driftSign = if (thresholdDrift > 0) "+" else ""
+
+                // Adaptive Metrics
                 val levenshtein = calculateLevenshtein(targetString, decodedString)
                 val cerOverall = if (targetLength > 0) (levenshtein.toFloat() / targetLength.toFloat()) * 100f else 0f
-                
-                val wpm = if (elapsedMinutes > 0) (targetLength / 5.0f) / elapsedMinutes else 0f
-                val idealBlinks = 135 // For 15x SOS
-                val bor = if (idealBlinks > 0) totalValidBlinks.toFloat() / idealBlinks.toFloat() else 0f
 
-                // Epoch calculations (Initial 1-15 vs Terminal 31-45)
                 val initTarget = if (targetString.length >= 15) targetString.substring(0, 15) else targetString
                 val initDecoded = if (decodedString.length >= 15) decodedString.substring(0, 15) else decodedString
                 val initLevenshtein = calculateLevenshtein(initTarget, initDecoded)
@@ -157,9 +196,16 @@ class SessionLogger {
                 val termDecoded = if (decodedString.length >= 45) decodedString.substring(30, 45) else ""
                 val termLevenshtein = calculateLevenshtein(termTarget, termDecoded)
                 val cerTerm = if (termTarget.isNotEmpty()) (termLevenshtein.toFloat() / termTarget.length.toFloat()) * 100f else 0f
-                
-                val thresholdDrift = finalThresholdMs - initialThresholdMs
-                val driftSign = if (thresholdDrift > 0) "+" else ""
+
+                // Shadow Fixed Baseline Metrics
+                val fixedLevenshtein = calculateLevenshtein(targetString, fixedDecodedString)
+                val fixedCerOverall = if (targetLength > 0) (fixedLevenshtein.toFloat() / targetLength.toFloat()) * 100f else 0f
+
+                val initFixed = if (fixedDecodedString.length >= 15) fixedDecodedString.substring(0, 15) else fixedDecodedString
+                val fixedCerInit = if (initTarget.isNotEmpty()) (calculateLevenshtein(initTarget, initFixed).toFloat() / initTarget.length.toFloat()) * 100f else 0f
+
+                val termFixed = if (fixedDecodedString.length >= 45) fixedDecodedString.substring(30, 45) else ""
+                val fixedCerTerm = if (termTarget.isNotEmpty()) (calculateLevenshtein(termTarget, termFixed).toFloat() / termTarget.length.toFloat()) * 100f else 0f
 
                 writer.append("\n# SUMMARY_METRICS\n")
                 writer.append("Metric,Value\n")
@@ -177,9 +223,23 @@ class SessionLogger {
                 writer.append("TotalValidBlinks,$totalValidBlinks\n")
                 writer.append("IdealBlinks,$idealBlinks\n")
                 writer.append("BlinkOverheadRatio,${String.format(Locale.US, "%.2f", bor)}\n")
+                writer.append("ConfiguredCharacterWindowMs,$lastGap\n")
+                writer.append("ConfiguredCharacterWindowSec,${String.format(Locale.US, "%.2f", lastGap / 1000f)}\n")
+                writer.append("InitialShortCenterMs,${String.format(Locale.US, "%.2f", initialShortCenterMs)}\n")
+                writer.append("FinalShortCenterMs,${String.format(Locale.US, "%.2f", finalShortCenterMs)}\n")
+                writer.append("InitialLongCenterMs,${String.format(Locale.US, "%.2f", initialLongCenterMs)}\n")
+                writer.append("FinalLongCenterMs,${String.format(Locale.US, "%.2f", finalLongCenterMs)}\n")
                 writer.append("InitialThresholdMs,${String.format(Locale.US, "%.2f", initialThresholdMs)}\n")
-                writer.append("FinalThresholdMs,${String.format(Locale.US, "%.2f", finalThresholdMs)}\n")
+                writer.append("FinalThresholdMs,${String.format(Locale.US, "%.2f", effectiveFinalThreshold)}\n")
                 writer.append("ThresholdDriftMs,$driftSign${String.format(Locale.US, "%.2f", thresholdDrift)}\n")
+                
+                // Fixed Shadow Metrics Section
+                writer.append("FixedCalibratedThresholdMs,${String.format(Locale.US, "%.2f", fixedCalibratedThresholdMs)}\n")
+                writer.append("FixedDecodedString,$fixedDecodedString\n")
+                writer.append("Fixed_LevenshteinEditDistance,$fixedLevenshtein\n")
+                writer.append("Fixed_CER_Overall_Percent,${String.format(Locale.US, "%.2f", fixedCerOverall)}\n")
+                writer.append("Fixed_CER_Initial_1_15_Percent,${String.format(Locale.US, "%.2f", fixedCerInit)}\n")
+                writer.append("Fixed_CER_Terminal_31_45_Percent,${String.format(Locale.US, "%.2f", fixedCerTerm)}\n")
             }
             Log.d("SessionLogger", "Test 1 Session exported to: ${file.absolutePath}")
             return file.name
@@ -203,9 +263,9 @@ class SessionLogger {
         val file = File(dir, fileName)
         try {
             FileWriter(file).use { writer ->
-                writer.append("Timestamp,DurationMs,ShortCenter,LongCenter,Threshold,Symbol,Adaptation,DecodedChar\n")
+                writer.append("Timestamp,DurationMs,ShortCenter,LongCenter,Threshold,CharacterGapMs,Symbol,Adaptation,DecodedChar\n")
                 for (log in logs) {
-                    writer.append("${log.timestampMs},${log.durationMs},${log.shortCenterMs},${log.longCenterMs},${log.thresholdMs},${log.symbol},${log.adaptationStatus},${log.decodedChar}\n")
+                    writer.append("${log.timestampMs},${log.durationMs},${String.format(Locale.US, "%.2f", log.shortCenterMs)},${String.format(Locale.US, "%.2f", log.longCenterMs)},${String.format(Locale.US, "%.2f", log.thresholdMs)},${log.characterGapMs},${log.symbol},${log.adaptationStatus},${log.decodedChar}\n")
                 }
             }
             Log.d("SessionLogger", "Session exported to: ${file.absolutePath}")
