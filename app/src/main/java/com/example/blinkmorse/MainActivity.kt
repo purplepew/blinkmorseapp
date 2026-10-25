@@ -80,7 +80,8 @@ import java.io.File
 import java.util.Locale
 import java.util.concurrent.Executors
 
-const val TEST_1_TARGET_LENGTH = 45 // "SOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOS" (length 45)
+const val TEST_1_TARGET_LENGTH = 45
+const val TEST_1_TARGET_STRING = "SOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOSSOS"
 
 enum class AppState {
     CALIBRATING_SHORT,
@@ -401,10 +402,15 @@ fun BlinkMorseUI() {
     }
     var faceDetectedState by remember { mutableStateOf<Boolean?>(null) }
     var isTest1Active by remember { mutableStateOf(false) }
-    var isFatigueTestActive by remember { mutableStateOf(false) }
     var lastBlinkDuration by remember { mutableStateOf<Long?>(null) }
     var currentFps by remember { mutableIntStateOf(0) }
     var keypadMode by remember { mutableStateOf(KeypadMode.ABC) }
+
+    // Telemetry State for Test 1
+    var testStartTimeMs by remember { mutableStateOf(0L) }
+    var testEndTimeMs by remember { mutableStateOf(0L) }
+    var totalValidBlinksInTest by remember { mutableIntStateOf(0) }
+    var initialThresholdMs by remember { mutableStateOf(0f) }
     
     // Camera & Flashlight State
     var boundCamera by remember { mutableStateOf<androidx.camera.core.Camera?>(null) }
@@ -450,31 +456,42 @@ fun BlinkMorseUI() {
                 }
                 Log.d("BlinkMorse", "Panic flutter detected! Aborting character.")
             }
-        ) { decodedChar ->
+        ) { decodedChar, seq, isError ->
             if (isTest1Active) {
                 // STRICT EVALUATION MODE
-                // Force learning from all garbage to capture raw fatigue drift
-                adaptiveThreshold.commitStagedBlinks() 
-                
-                // Disable prosigns. Treat invalid strings ("") or disabled commands as "*"
-                val isGarbageOrCommand = decodedChar.isEmpty() || decodedChar == "<BS>" || decodedChar == "<SPEAK>"
-                val charToAppend = if (isGarbageOrCommand) "*" else decodedChar
-                
-                decodedText += charToAppend
-                sessionLogger.attachDecodedChar(charToAppend)
-
-                coroutineScope.launch(Dispatchers.Default) {
-                    if (isGarbageOrCommand) {
-                        toneGenerator.startTone(ToneGenerator.TONE_PROP_NACK, 150)
-                    } else {
+                if (isError) {
+                    adaptiveThreshold.clearStagedBlinks()
+                    coroutineScope.launch(Dispatchers.Default) {
+                        toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 300)
+                    }
+                } else {
+                    adaptiveThreshold.commitStagedBlinks()
+                    coroutineScope.launch(Dispatchers.Default) {
                         toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                     }
                 }
+                
+                decodedText += decodedChar
+                sessionLogger.attachDecodedChar(decodedChar)
 
                 // Auto-finish Test 1 using the strict length limit
                 if (decodedText.length >= TEST_1_TARGET_LENGTH) {
+                    val endTime = android.os.SystemClock.uptimeMillis()
+                    testEndTimeMs = endTime
                     coroutineScope.launch(Dispatchers.Main) {
-                        val fileName = sessionLogger.exportSession(context)
+                        toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
+                        
+                        val fileName = sessionLogger.exportTest1Session(
+                            context = context,
+                            testMode = "ADAPTIVE",
+                            targetString = TEST_1_TARGET_STRING,
+                            decodedString = decodedText,
+                            testStartTimeMs = testStartTimeMs,
+                            testEndTimeMs = endTime,
+                            totalValidBlinks = totalValidBlinksInTest,
+                            initialThresholdMs = initialThresholdMs,
+                            finalThresholdMs = adaptiveThreshold.threshold
+                        )
                         if (fileName != null) {
                             Toast.makeText(context, "Saved as $fileName", Toast.LENGTH_LONG).show()
                         }
@@ -484,7 +501,7 @@ fun BlinkMorseUI() {
                 }
             } else {
                 // NORMAL TYPING MODE
-                if (decodedChar.isNotEmpty()) {
+                if (decodedChar.isNotEmpty() && !isError) {
                     // Strict match successful -> Commit staged blinks to baseline
                     adaptiveThreshold.commitStagedBlinks()
 
@@ -532,19 +549,6 @@ fun BlinkMorseUI() {
                                     // If not calibrated, still let them test or fallback
                                     updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
                                 }
-                            }
-                        }
-                        "<FATIGUE_TEST>" -> {
-                            currentScreen = "main"
-                            if (isFatigueTestActive) {
-                                isFatigueTestActive = false
-                                updateUIState(AppState.READY_TYPING, "Typing Mode")
-                            } else {
-                                isFatigueTestActive = true
-                                sessionLogger.startNewSession()
-                                decodedText = ""
-                                currentSymbols = ""
-                                updateUIState(AppState.READY_TYPING, "FATIGUE TEST: 15-Min Trial Mode")
                             }
                         }
                         "<DATALOGS>" -> {
@@ -739,10 +743,24 @@ fun BlinkMorseUI() {
 
                                         val symbolAccepted = morseDecoder.addSymbol(symbol)
 
+                                        // Ensure we log the exact state BEFORE the decoder potentially wipes it 
+                                        // or after it has updated `currentSymbols` via `onSymbolUpdated`
+                                        sessionLogger.logBlink(
+                                            testStartTimeMs = testStartTimeMs,
+                                            charAttemptIndex = decodedText.length + 1,
+                                            targetChar = if (isTest1Active && decodedText.length < TEST_1_TARGET_STRING.length) TEST_1_TARGET_STRING[decodedText.length] else '?',
+                                            durationMs = duration,
+                                            shortCenter = adaptiveThreshold.shortCenter,
+                                            longCenter = adaptiveThreshold.longCenter,
+                                            threshold = adaptiveThreshold.threshold,
+                                            symbol = symbol,
+                                            adaptation = adaptiveThreshold.lastAdaptation,
+                                            stagedSequence = currentSymbols
+                                        )
+
                                         if (!symbolAccepted) {
-                                            // The blink caused a 6-symbol abort. 
-                                            // Clear the staged medians so the math doesn't corrupt.
-                                            // (Sound buzz handled inside onAbort)
+                                            // Standard Mode: 7-blink abort wipes staging.
+                                            // (Strict Mode never enters here because it returns true)
                                             adaptiveThreshold.clearStagedBlinks()
                                         } else {
                                             // Normal Blink -> Play Dot/Dash
@@ -761,15 +779,6 @@ fun BlinkMorseUI() {
                                                 isFlashing = false
                                             }
                                         }
-
-                                        sessionLogger.logBlink(
-                                            durationMs = duration,
-                                            shortCenter = adaptiveThreshold.shortCenter,
-                                            longCenter = adaptiveThreshold.longCenter,
-                                            threshold = adaptiveThreshold.threshold,
-                                            symbol = symbol,
-                                            adaptation = adaptiveThreshold.lastAdaptation
-                                        )
 
                                         thresholdInfo = String.format(
                                             Locale.US,
@@ -897,11 +906,7 @@ fun BlinkMorseUI() {
                     }
                 } else {
                     appState = AppState.READY_TYPING
-                    promptMessage = when {
-                        isTest1Active -> "TEST 1: Spell 'SOS' 15x (No spaces)"
-                        isFatigueTestActive -> "FATIGUE TEST: 15-Min Trial Mode"
-                        else -> "Typing Mode"
-                    }
+                    promptMessage = if (isTest1Active) "TESTING: Spell 'SOS' 15x" else "Typing Mode"
                     currentScreen = "main"
                 }
             }
@@ -915,7 +920,6 @@ fun BlinkMorseUI() {
             decodedText = decodedText,
             faceDetectedState = faceDetectedState,
             isTest1Active = isTest1Active,
-            isFatigueTestActive = isFatigueTestActive,
             lastBlinkDuration = lastBlinkDuration,
             thresholdInfo = thresholdInfo,
             keypadMode = keypadMode,
@@ -931,7 +935,6 @@ fun BlinkMorseUI() {
         MenuPanelScreen(
             currentSymbols = currentSymbols,
             isTest1Active = isTest1Active,
-            isFatigueTestActive = isFatigueTestActive,
             thresholdInfo = thresholdInfo,
             lastAdaptation = adaptiveThreshold.lastAdaptation,
             currentFps = currentFps,
@@ -939,32 +942,25 @@ fun BlinkMorseUI() {
                 currentScreen = "main"
                 if (isTest1Active) {
                     isTest1Active = false
+                    morseDecoder.isStrictMode = false
                     updateUIState(AppState.READY_TYPING, "Typing Mode")
                 } else {
                     isTest1Active = true
+                    morseDecoder.isStrictMode = true
+                    adaptiveThreshold.resetToCalibratedBaseline(sharedPrefs)
                     sessionLogger.startNewSession()
+                    testStartTimeMs = 0L
+                    testEndTimeMs = 0L
+                    totalValidBlinksInTest = 0
+                    initialThresholdMs = 0f
                     decodedText = ""
                     currentSymbols = ""
-                    updateUIState(AppState.READY_TYPING, "TEST 1: Spell 'SOS' 15x (No spaces)")
-                }
-            },
-            onFatigueTestClick = {
-                currentScreen = "main"
-                if (isFatigueTestActive) {
-                    isFatigueTestActive = false
-                    updateUIState(AppState.READY_TYPING, "Typing Mode")
-                } else {
-                    isFatigueTestActive = true
-                    sessionLogger.startNewSession()
-                    decodedText = ""
-                    currentSymbols = ""
-                    updateUIState(AppState.READY_TYPING, "FATIGUE TEST: 15-Min Trial Mode")
+                    updateUIState(AppState.READY_TYPING, "TESTING: Spell 'SOS' 15x")
                 }
             },
             onDataManagerClick = { showDataManagerBottomSheet(context) },
             onRecalibrateClick = {
                 isTest1Active = false
-                isFatigueTestActive = false
                 sharedPrefs.edit().clear().apply()
                 hasSavedCalibration = false
                 adaptiveThreshold.reset()

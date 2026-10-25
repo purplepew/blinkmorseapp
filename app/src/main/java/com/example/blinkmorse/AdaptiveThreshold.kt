@@ -113,6 +113,25 @@ class AdaptiveThreshold(
         return (currentLongMedian - currentShortMedian) >= minimumSeparationMs
     }
 
+    fun resetToCalibratedBaseline(prefs: android.content.SharedPreferences) {
+        clearStagedBlinks()
+        
+        // Attempt to load from immutable preferences
+        if (!loadFromPreferences(prefs)) {
+            // Fallback to static constant if uncalibrated
+            shortSamples.clear()
+            longSamples.clear()
+            
+            // Generate dummy samples to achieve the default hardware cutoff
+            // shortCenter = 180.0f, longCenter = 605.0f -> separation = 425.0f
+            // threshold = 180.0f + (425.0f * 0.40) = 180.0f + 170.0f = 350.0f
+            repeat(10) { shortSamples.add(180.0f) }
+            repeat(10) { longSamples.add(605.0f) }
+            
+            update()
+        }
+    }
+
     fun reset() {
         shortSamples.clear()
         longSamples.clear()

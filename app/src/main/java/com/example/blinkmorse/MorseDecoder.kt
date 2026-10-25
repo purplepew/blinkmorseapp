@@ -11,7 +11,7 @@ class MorseDecoder(
     private val coroutineScope: CoroutineScope,
     private val onSymbolUpdated: (String) -> Unit,
     private val onAbort: () -> Unit,
-    private val onCharacterDecoded: (String) -> Unit
+    private val onCharacterDecoded: (decodedChar: String, currentSymbols: String, isError: Boolean) -> Unit
 ) {
     companion object {
         const val MORSE_CHARACTER_GAP_MS = 2500L
@@ -53,13 +53,21 @@ class MorseDecoder(
     fun addSymbol(symbol: String): Boolean {
         currentSymbols += symbol
 
-        // INSTANT ABORT CHECK (Disabled in Strict Evaluation Mode)
-        if (!isStrictMode && (currentSymbols.length >= 7)) {
+        if (currentSymbols.length >= 7) {
             timeoutJob?.cancel()
+            val overflowSeq = currentSymbols
             currentSymbols = ""
             notifySymbolUpdated()
-            onAbort()
-            return false // Returns false to indicate the blink was rejected/aborted
+
+            if (isStrictMode) {
+                // Strict Evaluation Mode: Treat >= 7 blinks as a definitive error (#)
+                onCharacterDecoded("#", overflowSeq, true)
+                return true // Accept the blink (no manual abort buzz inside addSymbol)
+            } else {
+                // Standard Mode: Wipe buffer and rollback
+                onAbort()
+                return false
+            }
         }
 
         notifySymbolUpdated()
@@ -77,15 +85,28 @@ class MorseDecoder(
 
     private fun decodeCurrent() {
         if (currentSymbols.isNotEmpty()) {
-            // STRICT EXACT MATCH: No fallbacks, no guesses.
             val decodedChar = MORSE_MAP[currentSymbols]
-            
-            if (decodedChar != null) {
-                Log.d("BlinkMorse", "Character Decoded: '$decodedChar' (from symbols: $currentSymbols)")
-                onCharacterDecoded(decodedChar)
+            val seq = currentSymbols
+
+            if (isStrictMode) {
+                // In Strict Mode, unmapped strings OR any control prosigns (starting with '<' or equals ' ') 
+                // are illegal and result in the error token '#'
+                if (decodedChar == null || decodedChar.startsWith("<") || decodedChar == " ") {
+                    Log.d("BlinkMorse", "Strict Mode Reject: '$seq' -> mapped to '$decodedChar'. Emitting '#'.")
+                    onCharacterDecoded("#", seq, true)
+                } else {
+                    Log.d("BlinkMorse", "Character Decoded: '$decodedChar' (from symbols: $seq)")
+                    onCharacterDecoded(decodedChar, seq, false)
+                }
             } else {
-                Log.d("BlinkMorse", "Unrecognized sequence: '$currentSymbols'. Sending empty string.")
-                onCharacterDecoded("") // Empty string signifies invalid sequence
+                // Normal Mode
+                if (decodedChar != null) {
+                    Log.d("BlinkMorse", "Character Decoded: '$decodedChar' (from symbols: $seq)")
+                    onCharacterDecoded(decodedChar, seq, false)
+                } else {
+                    Log.d("BlinkMorse", "Unrecognized sequence: '$seq'. Sending empty string.")
+                    onCharacterDecoded("", seq, false) // Empty string signifies invalid sequence
+                }
             }
             
             currentSymbols = ""

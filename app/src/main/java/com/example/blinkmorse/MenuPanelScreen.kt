@@ -20,12 +20,10 @@ import androidx.compose.ui.unit.sp
 fun MenuPanelScreen(
     currentSymbols: String = "",
     isTest1Active: Boolean = false,
-    isFatigueTestActive: Boolean = false,
     thresholdInfo: String = "",
     lastAdaptation: String = "",
     currentFps: Int = 0,
     onTest1Click: () -> Unit,
-    onFatigueTestClick: () -> Unit,
     onDataManagerClick: () -> Unit,
     onRecalibrateClick: () -> Unit,
     onClose: () -> Unit,
@@ -134,30 +132,17 @@ fun MenuPanelScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         MenuButton(
-                            title = if (isTest1Active) "CANCEL TEST 1" else "START TEST 1",
+                            title = if (isTest1Active) "CANCEL TESTING" else "START TESTING",
                             morse = ".--.-.",
                             onClick = onTest1Click,
                             modifier = Modifier.weight(1f),
                         )
-                        MenuButton(
-                            title = if (isFatigueTestActive) "STOP FATIGUE" else "FATIGUE TEST",
-                            morse = "-.-.--",
-                            onClick = onFatigueTestClick,
-                            modifier = Modifier.weight(1f),
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
                         MenuButton(
                             title = "DATA LOGS",
                             morse = ".-...-",
                             onClick = onDataManagerClick,
                             modifier = Modifier.weight(1f),
                         )
-                        Spacer(modifier = Modifier.weight(1f)) // Placeholder for symmetry
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

@@ -29,7 +29,6 @@ fun MainPanelScreen(
     decodedText: String,
     faceDetectedState: Boolean?,
     isTest1Active: Boolean,
-    isFatigueTestActive: Boolean,
     lastBlinkDuration: Long? = null,
     thresholdInfo: String = "",
     keypadMode: KeypadMode = KeypadMode.ABC,
@@ -101,6 +100,18 @@ fun MainPanelScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 if (isTest1Active) {
+                    val attemptCount = decodedText.length
+                    val promptText = "TESTING [Rep ${(attemptCount / 3) + 1}/15 | Char ${attemptCount + 1}/45]"
+                    
+                    Text(
+                        text = promptText,
+                        color = SolarMuted,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
                     val annotatedString = buildAnnotatedString {
                         val visualTarget = "SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS SOS"
                         var decodedIndex = 0
@@ -120,14 +131,18 @@ fun MainPanelScreen(
                                     }
                                     decodedIndex++
                                 } else {
-                                    withStyle(style = SpanStyle(color = SolarMuted)) { append(targetChar) }
+                                    if (decodedIndex == attemptCount) {
+                                        withStyle(style = SpanStyle(color = SolarBg, background = SolarMuted)) { append("[$targetChar]") }
+                                    } else {
+                                        withStyle(style = SpanStyle(color = SolarMuted)) { append(targetChar.toString()) }
+                                    }
                                 }
                             }
                         }
                     }
                     Text(
                         text = annotatedString,
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = TextAlign.Center,
                         letterSpacing = 1.5.sp,
