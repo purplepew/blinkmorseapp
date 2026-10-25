@@ -47,19 +47,19 @@ fun MainPanelScreen(
             .fillMaxSize()
             .background(SolarBg)
             .windowInsetsPadding(WindowInsets.systemBars)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         // Top Section: Display Board
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.45f)
-                .clip(RoundedCornerShape(24.dp))
+                .weight(0.35f)
+                .clip(RoundedCornerShape(20.dp))
                 .background(SolarDisplayBg)
                 .drawCyberGrid()
-                .border(1.5.dp, SolarLine, RoundedCornerShape(24.dp))
-                .padding(16.dp),
+                .border(1.5.dp, SolarLine, RoundedCornerShape(20.dp))
+                .padding(12.dp),
         ) {
             // Top Right: Help & Menu Buttons
             Row(
@@ -217,11 +217,11 @@ fun MainPanelScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(64.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .height(48.dp)
+                .clip(RoundedCornerShape(14.dp))
                 .background(SolarKeyBg)
-                .border(1.5.dp, SolarLine, RoundedCornerShape(16.dp))
-                .padding(horizontal = 24.dp),
+                .border(1.2.dp, SolarLine, RoundedCornerShape(14.dp))
+                .padding(horizontal = 16.dp),
             contentAlignment = Alignment.Center,
         ) {
             LargeMorseVisualizer(
@@ -234,7 +234,7 @@ fun MainPanelScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.55f),
+                .weight(0.65f),
         ) {
             MorseCheatSheetGrid(selectedMode = keypadMode, onModeChange = onModeChange)
         }

@@ -4,8 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -28,7 +30,9 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
             .padding(16.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
-        // Floating Help Modal Window
+        val scrollState = rememberScrollState()
+
+        // Floating Help Modal Window (Quick Response Mode)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -37,7 +41,8 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                 .background(SolarBg)
                 .drawCyberGrid()
                 .border(1.5.dp, SolarLine, RoundedCornerShape(24.dp))
-                .padding(20.dp),
+                .padding(20.dp)
+                .verticalScroll(scrollState),
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -73,47 +78,83 @@ fun HelpPanelScreen(currentSymbols: String = "", onClose: () -> Unit) {
                     horizontalAlignment = Alignment.Start,
                 ) {
                     Text(
-                        text = "ACTION MORSE COMMANDS",
-                        color = SolarInk,
-                        fontSize = 16.sp,
+                        text = "QUICK RESPONSE MODE",
+                        color = SolarAccent,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Black,
                         letterSpacing = 1.sp,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                    Text(
+                        text = "Single & short blinks trigger instant responses while this panel is active.",
+                        color = SolarMuted,
+                        fontSize = 9.5.sp,
                         modifier = Modifier.padding(bottom = 10.dp),
                     )
 
                     ActionCommandItem(
-                        icon = "🚨",
-                        name = "Emergency Siren",
-                        morse = "---...",
-                        description = "Play siren alarm & flash screen",
+                        icon = "✅",
+                        name = "Yes",
+                        morse = ".",
+                        description = "Speak: Yes. (1 Dot)",
                     )
                     ActionCommandItem(
-                        icon = "⚕️",
-                        name = "Clinical Care Alert",
-                        morse = "----..",
-                        description = "Speak: I am experiencing discomfort...",
+                        icon = "❌",
+                        name = "No",
+                        morse = "..",
+                        description = "Speak: No. (2 Dots)",
                     )
                     ActionCommandItem(
-                        icon = "🔦",
-                        name = "Night Call Light",
-                        morse = ".-.-.-",
-                        description = "Visually signal caregiver in darkened room",
+                        icon = "💧",
+                        name = "Need Water",
+                        morse = "-",
+                        description = "Speak: I need water. (1 Dash)",
                     )
                     ActionCommandItem(
-                        icon = "💬",
-                        name = "Quick SOS Text",
+                        icon = "⚡",
+                        name = "Pain Alert",
+                        morse = "--",
+                        description = "Speak: I am experiencing sharp pain. (2 Dashes)",
+                    )
+                    ActionCommandItem(
+                        icon = "🔄",
+                        name = "Reposition Request",
+                        morse = "...",
+                        description = "Speak: Please adjust my position or bed angle.",
+                    )
+                    ActionCommandItem(
+                        icon = "🌡️",
+                        name = "Temperature",
+                        morse = "---",
+                        description = "Speak: Adjust blanket or thermostat.",
+                    )
+                    ActionCommandItem(
+                        icon = "⏳",
+                        name = "Give Me A Moment",
+                        morse = ".-",
+                        description = "Speak: Thinking, please wait.",
+                    )
+                    ActionCommandItem(
+                        icon = "🤫",
+                        name = "Privacy Request",
+                        morse = "-.",
+                        description = "Speak: Quiet time alone, please.",
+                    )
+                    ActionCommandItem(
+                        icon = "💖",
+                        name = "Family Message",
+                        morse = ".--",
+                        description = "Speak: I love you and thank you.",
+                    )
+                    ActionCommandItem(
+                        icon = "🆘",
+                        name = "Quick SOS",
                         morse = "-.-.-",
-                        description = "Insert emergency text & auto-speak",
-                    )
-                    ActionCommandItem(
-                        icon = "🔋",
-                        name = "System Status",
-                        morse = "-...-",
-                        description = "Speak current battery & time",
+                        description = "EMERGENCY HELP NEEDED! (Auto-Speak)",
                     )
 
                     Text(
-                        text = "* Blink custom action Morse codes to execute instant controls.",
+                        text = "* Blink the simplified codes above to respond instantly.",
                         color = SolarMuted.copy(alpha = 0.85f),
                         fontSize = 9.5.sp,
                         fontFamily = FontFamily.Monospace,

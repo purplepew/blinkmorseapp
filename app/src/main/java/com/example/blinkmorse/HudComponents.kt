@@ -269,6 +269,7 @@ fun MorseCheatSheetGrid(
         "6" to "-....", "7" to "--...", "8" to "---..", "9" to "----.", "0" to "-----"
     )
 
+    val chunkSize = 5
     val currentMap = if (selectedMode == KeypadMode.ABC) alphabetMap else numbersMap
 
     Column(
@@ -329,7 +330,7 @@ fun MorseCheatSheetGrid(
             }
         }
 
-        currentMap.chunked(5).forEach { rowItems ->
+        currentMap.chunked(chunkSize).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -362,8 +363,8 @@ fun MorseCheatSheetGrid(
                     }
                 }
                 
-                if (rowItems.size < 5) {
-                    repeat(5 - rowItems.size) {
+                if (rowItems.size < chunkSize) {
+                    repeat(chunkSize - rowItems.size) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
                 }

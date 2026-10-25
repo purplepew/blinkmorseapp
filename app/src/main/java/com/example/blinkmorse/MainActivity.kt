@@ -558,20 +558,57 @@ fun BlinkMorseUI() {
                                 isFlashing = false
                             }
                         }
-                        "<CARE_ALERT>" -> {
-                            val alertMsg = "I am experiencing discomfort, please check on me."
-                            decodedText += "[$alertMsg] "
-                            tts?.speak(alertMsg, TextToSpeech.QUEUE_FLUSH, null, "CareAlertTTS")
-                            Log.d("BlinkMorse", "Care Alert triggered.")
-                        }
                         "<NIGHT_CALL>" -> {
                             isTorchOn = !isTorchOn
                             boundCamera?.cameraControl?.enableTorch(isTorchOn)
                         }
                         "<QUICK_SOS>" -> {
                             val sosMsg = "EMERGENCY HELP NEEDED!"
-                            decodedText += "$sosMsg "
+                            decodedText += "[$sosMsg] "
                             tts?.speak(sosMsg, TextToSpeech.QUEUE_FLUSH, null, "QuickSOSTTS")
+                        }
+                        "<YES>" -> {
+                            decodedText += "[Yes] "
+                            tts?.speak("Yes.", TextToSpeech.QUEUE_FLUSH, null, "YesTTS")
+                        }
+                        "<NO>" -> {
+                            decodedText += "[No] "
+                            tts?.speak("No.", TextToSpeech.QUEUE_FLUSH, null, "NoTTS")
+                        }
+                        "<REPOSITION>" -> {
+                            val msg = "Please adjust my position or bed angle."
+                            decodedText += "[Reposition] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "RepositionTTS")
+                        }
+                        "<PAIN>" -> {
+                            val msg = "I am experiencing sharp pain."
+                            decodedText += "[Pain Alert] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "PainTTS")
+                        }
+                        "<WATER>" -> {
+                            val msg = "I need water."
+                            decodedText += "[Need Water] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "WaterTTS")
+                        }
+                        "<TEMP>" -> {
+                            val msg = "Adjust blanket or thermostat."
+                            decodedText += "[Temperature] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "TempTTS")
+                        }
+                        "<WAIT>" -> {
+                            val msg = "Thinking, please wait."
+                            decodedText += "[Wait] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "WaitTTS")
+                        }
+                        "<PRIVACY>" -> {
+                            val msg = "Quiet time alone, please."
+                            decodedText += "[Privacy] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "PrivacyTTS")
+                        }
+                        "<FAMILY>" -> {
+                            val msg = "I love you and thank you."
+                            decodedText += "[Love/Thanks] "
+                            tts?.speak(msg, TextToSpeech.QUEUE_FLUSH, null, "FamilyTTS")
                         }
                         "<STATUS>" -> {
                             val bm = context.getSystemService(Context.BATTERY_SERVICE) as? android.os.BatteryManager
@@ -601,7 +638,7 @@ fun BlinkMorseUI() {
                         when (decodedChar) {
                             "<BS>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 200)
                             "<SPEAK>" -> toneGenerator.startTone(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 200)
-                            "<MENU>", "<HELP>", "<CLOSE>", "<TEST1>", "<DATALOGS>", "<FLASHLIGHT>", "<QUICK_SOS>", "<STATUS>", "<TOGGLE_KEYPAD>" -> 
+                            "<MENU>", "<HELP>", "<CLOSE>", "<TEST1>", "<DATALOGS>", "<NIGHT_CALL>", "<QUICK_SOS>", "<STATUS>", "<TOGGLE_KEYPAD>", "<YES>", "<NO>", "<REPOSITION>", "<PAIN>", "<WATER>", "<TEMP>", "<WAIT>", "<PRIVACY>", "<FAMILY>" -> 
                                 toneGenerator.startTone(ToneGenerator.TONE_CDMA_ABBR_ALERT, 200)
                             else -> toneGenerator.startTone(ToneGenerator.TONE_PROP_ACK, 150)
                         }
@@ -873,6 +910,7 @@ fun BlinkMorseUI() {
     }
 
     LaunchedEffect(shortCalibCount, longCalibCount, currentScreen) {
+        morseDecoder.isQuickModeActive = (currentScreen == "help")
         if (currentScreen == "intro" && shortCalibCount >= 10 && longCalibCount >= 10) {
             delay(800)
             currentScreen = "main"

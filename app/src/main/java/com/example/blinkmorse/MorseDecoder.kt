@@ -31,17 +31,39 @@ class MorseDecoder(
             "...-." to "<BS>",      // Custom backspace command
             ".-.-" to "<SPEAK>",    // Custom Speak command
             "...---" to "<CLEAR>",  // Custom Clear All Board command
-            "..-.." to "<HELP>",     // Custom Help command (overrides '?')
+            "..-.." to "<HELP>",     // Custom Help command
             ".--.-." to "<TEST1>",    // Custom Start/Cancel Test 1 command
             ".-...-" to "<DATALOGS>", // Custom Data Logs command
-            "---..." to "<SIREN>",   // Custom Emergency Siren command
-            "----.." to "<CARE_ALERT>", // Custom Clinical Care Request command
-            ".-.-.-" to "<NIGHT_CALL>", // Custom Night Call Light command
-            "-.-.-" to "<QUICK_SOS>", // Custom Quick SOS Message command
-            "-...-" to "<STATUS>",   // Custom Battery & Time Status command
-            ".-.-." to "<TOGGLE_KEYPAD>", // Custom Hands-Free Keypad Mode Toggle command
-            "..-.-" to "<CLOSE>",    // Custom Close Modal command
-            "-.-.--" to "<FATIGUE_TEST>" // Custom Fatigue Test command
+            "---..." to "<PAIN>",     // Pain Alert command
+            "----.." to "<REPOSITION>", // Reposition Request command
+            ".-.-.-" to "<NIGHT_CALL>", // Night Call Light command
+            "-.-.-" to "<QUICK_SOS>", // Quick SOS Message command
+            "-...-" to "<STATUS>",   // Battery & Time Status command
+            ".-.-." to "<TOGGLE_KEYPAD>", // Keypad Mode Toggle command
+            "..-.-" to "<CLOSE>",    // Close Modal command
+            "-.-.--" to "<WATER>",   // Need Water command
+            "...--." to "<TEMP>",    // Temperature Adjustment command
+            "......" to "<YES>",     // Instant Yes
+            "------" to "<NO>",      // Instant No
+            "..--.." to "<WAIT>",    // Give Me A Moment / Wait
+            "--..--" to "<PRIVACY>", // Privacy Request
+            ".-..-." to "<FAMILY>"   // Family Quick Message
+        )
+
+        // Special Quick-Response Mode dictionary used when Help Panel is open
+        val QUICK_MODE_MAP = mapOf(
+            "." to "<YES>",
+            ".." to "<NO>",
+            "-" to "<WATER>",
+            "--" to "<PAIN>",
+            "..." to "<REPOSITION>",
+            "---" to "<TEMP>",
+            ".-" to "<WAIT>",
+            "-." to "<PRIVACY>",
+            ".--" to "<FAMILY>",
+            "---.-" to "<MENU>",
+            "..-.." to "<HELP>",
+            "..-.-" to "<CLOSE>"
         )
     }
 
@@ -50,6 +72,7 @@ class MorseDecoder(
     private var timeoutJob: Job? = null
     
     var isStrictMode = false
+    var isQuickModeActive = false
     var characterGapMs: Long = MORSE_CHARACTER_GAP_MS
 
     fun addSymbol(symbol: String): Boolean {
@@ -87,7 +110,11 @@ class MorseDecoder(
 
     private fun decodeCurrent() {
         if (currentSymbols.isNotEmpty()) {
-            val decodedChar = MORSE_MAP[currentSymbols]
+            val decodedChar = if (isQuickModeActive) {
+                QUICK_MODE_MAP[currentSymbols] ?: MORSE_MAP[currentSymbols]
+            } else {
+                MORSE_MAP[currentSymbols]
+            }
             val seq = currentSymbols
 
             if (isStrictMode) {
